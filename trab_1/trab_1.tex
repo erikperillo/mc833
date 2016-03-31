@@ -1,0 +1,96 @@
+\documentclass[11pt]{article}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[brazilian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+%macros
+\newcommand{\fromeng}[1]{\footnote{do inglês: \textit{#1}}}
+\newcommand{\tit}[1]{\textit{#1}}
+\newcommand{\tbf}[1]{\textbf{#1}}
+\newcommand{\ttt}[1]{\texttt{#1}}
+
+\begin{document}
+
+\title{MC833 - Exercício 1}
+\author{Erik de Godoy Perillo - RA: 135582}
+\maketitle
+
+\begin{enumerate}
+\item --
+\begin{enumerate}
+	\item O parâmetro \ttt{-c} especifica quantas vezes o programa irá alcançar 
+		o host especificado para contar os tempos de ida e volta.
+		Os tempos mínimo, médio e máximo para \ttt{www.cam.ac.uk} foram, 
+		respectivamente, \ttt{204.025, 214.034, 224.255} ms.
+	\item Os tempos para \ttt{www.unicamp.br}, como esperado, foram muito
+		menores! Os tempos mínimo, médio e máximo foram, respectivamente,
+		\ttt{0.873, 6.438, 17.095} ms. 
+	\item Não, pois foi possível acessar o site pelo \tit{browser} mas não 
+		foi possível alcançá-lo pelo \ttt{ping}.
+\end{enumerate}
+
+\item Há a interface \ttt{wlp3s0}.
+	Seus endereços IP \ttt{inet, netmask, broadcast} são, respectivamente,
+	\ttt{177.220.89.54, 255.255.254.0, 177.220.89.255}.
+	Foram recebidos $2080396093$ \tit{bytes} e enviados $130064906$ 
+	\tit{bytes}. Há também a interface \ttt{lo}, com endereço IP
+	\ttt{inet 127.0.0.1}. Foram enviados e recebidos $7421153$ \tit{bytes}.
+
+\item Foram enviados e recebidos $13245$ pacotes. Após o comando 
+	\ttt{ping -c 2 127.0.0.1}, a quantidade de pacotes subiu para $13267$.
+	Assim, houve um acréscimo de $22$ pacotes. Não posso tirar conclusões
+	sobre a correlação entre pacotes enviados pelo comando \ttt{ping}
+	e o valor de pacotes que aparecem a mais com \ttt{ifconfig lo} pois
+	notei que o número de pacotes se altera mesmo quando não uso ping, ou
+	seja, pode haver outros fatores que influenciam nesse número.
+
+\item Há três rotas. A padrão (\ttt{default}) tem \tit{gateway} 
+	\ttt{wifig-gw.ifi.un} na interface \ttt{slp3s0}.
+
+\item --
+\begin{enumerate}
+	\item O endereço encontrado para \ttt{www.google.com} foi 
+		\ttt{172.217.28.36}. Mais de um endereço IP indica múltiplos servidores
+		autoritativos que podem lidar com mais dados. O servidor DNS da minha
+		estação tem o IP \ttt{143.106.9.2}.
+	\item Este endereço diz respeito ao meu próprio computador e tem o nome
+		\ttt{localhost}.
+\end{enumerate}
+
+\item --
+\begin{enumerate}
+	\item Há nove roteadores. Pelos nomes (terminador em .br), há seis deles
+		no Brasil.
+	\item Há 17 roteadores neste caso. Os quatro primeiros são comuns aos dois
+		casos.
+	\item Com um limite máximo de 255 hops, ele usou todos (uau). 
+		Não, não é a mesma, é feita apenas por 17 roteadores.
+	\item A partir do oitavo hop, \ttt{redclara.lon.uk.geant.net}. Isso porque
+		o \tit{rtt} desse hop ficou entre 200ms, enquanto que os anteriores
+		a ele não passaram de 20ms.
+\end{enumerate}
+
+\item --
+\begin{enumerate}
+	\item São dadas informações em tempo real sobre as conexões TCP feitas
+		enquanto acessa-se o site da Unicamp.
+	\item Não vi nenhuma.
+	\item O campo \tit{Foreign Address} muitas vezes começa com 
+		\ttt{gru06}.
+\end{enumerate}
+
+\item --
+\begin{enumerate}
+	\item Simplesmente especifico a porta padrão HTTP:
+		\ttt{telnet www.google.com 80}
+	\item Não é possível, é necessário um serviço nessa porta para lidar com a 
+		comunicação.
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
