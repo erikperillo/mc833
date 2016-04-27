@@ -1,0 +1,36 @@
+gethostbyname - pega o nome de um host e retorna uma estrutura com informações
+sobre ele, como endereço(s) IP, tipo de endereço, tamanho do endereço, lista
+de aliases.
+struct hostent* é a estrutura retornada pela função, a qual contém todos esses
+atributos.
+
+htons - assegura que o valor passado é convertido para a ordem de bytes da
+rede. isto é, muda (se necessário) a representação dos números no sistema
+(little/big endian) para a apropriada para a rede (big endian?)
+
+socket - cria um socket de comunicação para o sistema. especifica-se o domínio
+de comunicação do socket (eg. AF_INET), seu tipo (eg. SOCK_STREAM) e o protocolo
+de comunicação a ser usado (se 0, é escolhido o apropriado para o tipo de 
+comunicação).
+retorna um número inteiro que representa o file descriptor daque endpoint.
+
+connect - faz uma conexão na máquina que é feita por meio do socket s passado.
+o host a se conectar é definido por um argumento de tipo struct sockaddr_in,
+com o qual se especifica coisas como domínio de comunicação, endereço do host
+e porta.
+
+send - usado para comunicação de sockets orientados a conexão. especificado
+o socket sender, especifica-se um buffer (uma string, geralmente), o tamanho
+dela e flags.
+
+bind - associa o socket passado a um endereço de host (IP, porta).
+
+listen - marca o socket especificado como passivo, isto é, pronto para
+receber conexões. pode-se especificar o tamanho máximo da fila de conexões.
+
+accept - aceita conexões requisitadas ao socket especificado. cria um novo
+socket para cada conexão aceita e o retorna.
+por padrão, bloqueia até receber algo.
+
+recv - recebe uma mensagem pelo socket especificado, dada em buffer. retorna
+o tamanho do buffer recebido.
