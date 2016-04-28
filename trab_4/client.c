@@ -44,11 +44,17 @@ int main(int argc, char * argv[])
 	sin.sin_port = htons(SERVER_PORT);
 
 	/* active open */
-	if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+	if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("simplex-talk: socket");
 		exit(1);
 	}
-	
+
+	if(connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+		perror("simplex-talk: connect");
+		close(s);
+		exit(1);
+	}
+
 	addrlen = sizeof(addr);
 	if(getsockname(s, (struct sockaddr*)&addr, &addrlen) < 0) {
 		perror("simplex-talk: getsockname");
@@ -56,13 +62,7 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 	inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
-	printf("created socket on port #%d, IP %s \n", addr.sin_port, ip);
-
-	if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-		perror("simplex-talk: connect");
-		close(s);
-		exit(1);
-	}
+	printf("created socket on port #%d, IP %s\n", addr.sin_port, ip);
 
 	/* main loop: get and send lines of text */
 	while (fgets(buf, sizeof(buf), stdin)) {

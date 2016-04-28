@@ -13,6 +13,9 @@
 int main()
 {
 	struct sockaddr_in sin;
+	struct sockaddr_in addr;
+	socklen_t addrlen;	
+	char ip[INET_ADDRSTRLEN];
 	char buf[MAX_LINE];
 	int len;
 	int s, new_s;
@@ -40,6 +43,16 @@ int main()
 			perror("simplex-talk: accept");
 			exit(1);
 		}
+
+		addrlen = sizeof(addr);
+		if(getpeername(new_s, (struct sockaddr*)&addr, &addrlen) < 0) {
+			perror("simplex-talk: getpeername");
+			close(s);
+			exit(1);
+		}
+		inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
+		printf("connected to IP %s, port #%d\n", ip, addr.sin_port);
+
 		while (len = recv(new_s, buf, sizeof(buf), 0))
 			fputs(buf, stdout);
 		close(new_s);
