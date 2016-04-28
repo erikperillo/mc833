@@ -19,6 +19,7 @@ int main()
 	char buf[MAX_LINE];
 	int len;
 	int s, new_s;
+	pid_t self, child;
 
 	/* build address data structure */
 	bzero((char *)&sin, sizeof(sin));
@@ -37,6 +38,8 @@ int main()
 	}
 	listen(s, MAX_PENDING);
 
+	self = getpid();
+	printf("[PID %d] server listening on port #%d\n\n", self, SERVER_PORT);
 	/* wait for connection, then receive and print text */
 	while(1) {
 		if ((new_s = accept(s, (struct sockaddr *)&sin, &len)) < 0) {
@@ -44,6 +47,7 @@ int main()
 			exit(1);
 		}
 
+		//getting new connection information
 		addrlen = sizeof(addr);
 		if(getpeername(new_s, (struct sockaddr*)&addr, &addrlen) < 0) {
 			perror("simplex-talk: getpeername");
@@ -51,10 +55,22 @@ int main()
 			exit(1);
 		}
 		inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
-		printf("connected to IP %s, port #%d\n", ip, addr.sin_port);
+		printf("connected to IP %s, port #%d\n", ip, ntohs(addr.sin_port));
 
-		while (len = recv(new_s, buf, sizeof(buf), 0))
-			fputs(buf, stdout);
+		//spanning new process for connection
+		child = fork();
+		if(child == 0)
+		{
+			self = getpid();
+			close(s);
+			while (len = recv(new_s, buf, sizeof(buf), 0))
+				printf("[PID %d][IP %s, port %d] %s", 
+					self, ip, addr.sin_port, buf);
+				//fputs(buf, stdout);
+			close(new_s);
+			exit(0);
+		}	
+
 		close(new_s);
 	}
 }

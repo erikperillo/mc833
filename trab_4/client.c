@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 	inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
-	printf("created socket on port #%d, IP %s\n", addr.sin_port, ip);
+	printf("created socket on port #%d, IP %s\n", ntohs(addr.sin_port), ip);
 
 	/* main loop: get and send lines of text */
 	while (fgets(buf, sizeof(buf), stdin)) {
