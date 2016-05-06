@@ -1,0 +1,5 @@
+{h,n}to{n,h}{l,s} - converte a ordem de bytes de network para host (ou
+vice-versa) de um número sem sinal long ou short
+
+select(num_elems, rcv, snd, except, timer) - indica quais file descriptors
+estão disponíveis para ler/escrever.
