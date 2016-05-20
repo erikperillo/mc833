@@ -1,0 +1,92 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+#define BUF_SIZE 256
+
+//displays error message and quits
+void error(const char* msg)
+{
+	fprintf(stderr, "[udp_server] ");
+	perror(msg);
+	exit(1);
+}
+
+//sets up address structure
+void set_sockaddr(struct sockaddr_in* sockaddr, unsigned short port)
+{
+	memset((char*)sockaddr, 0, sizeof(struct sockaddr_in));
+	sockaddr->sin_addr.s_addr = htonl(INADDR_ANY);
+	sockaddr->sin_family = AF_INET;
+	sockaddr->sin_port = htons(port);
+}
+
+int main(int argc, char * argv[])
+{
+	struct sockaddr_in serv_addr;
+	struct sockaddr_in cli_addr;
+	socklen_t cli_addr_len;
+	char buf[BUF_SIZE];
+	unsigned short port;
+	int opt;
+	int sock;
+	int ret;
+
+	//choosing port number
+	if(argc > 1)
+		port = (unsigned short)atoi(argv[1]);
+	else 
+	{
+		fprintf(stderr, "[udp_server] usage: ./server <port>\n");
+		exit(1);
+	}
+
+	//setting up server address structure
+	memset((char*)&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(port);
+
+	//creating socket
+	sock = socket(PF_INET, SOCK_DGRAM, 0);
+	if(sock < 0) 
+		error("socket");
+
+	//allowing socket to be reused fast
+	opt = 1;
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(int));
+
+	//binding server socket
+	if(bind(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+		error("could not bind");
+
+	cli_addr_len = sizeof(cli_addr);
+	//main echo loop
+	while(1)
+	{
+		//receiving message (if any)
+		ret = recvfrom(sock, buf, BUF_SIZE, 0, 
+			(struct sockaddr*)&cli_addr, &cli_addr_len);
+
+		if(ret < 0)
+			printf("error receiving message from client");
+
+		if(ret > 0)
+		{
+			printf("[received from %s] %s\n", 
+				inet_ntoa(cli_addr.sin_addr), buf);
+
+			ret = sendto(sock, buf, 88, 0, 
+				(struct sockaddr*)&cli_addr, sizeof(cli_addr));
+			if(ret < 0)
+				error("error sending message to client");
+		}
+	}
+
+	return 0;
+}
