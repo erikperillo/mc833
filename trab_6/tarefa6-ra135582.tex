@@ -63,7 +63,7 @@ clientes:
 \end{figure}
 
 \item A principal diferença entre o protocolo UDP e o TCP é que o primeiro
-não é conectado a conexão, enquanto o outro é. Assim, UDP é efêmero no sentido
+não é orientado a conexão, enquanto o outro é. Assim, UDP é efêmero no sentido
 que só existe a troca da mensagem entre um \tit{host} e outro, enquanto que no
 TCP uma conexão é mantida até que não se queira/possa mais trocar mensagens.
 O UDP usa o método conhecido como \tit{best effort}, isto é: 
@@ -94,6 +94,50 @@ computacional baixo é apreciado/necessário.
 	\includegraphics[width=1.0\linewidth]{img/tepeguei.png}
 \end{figure}
 
+\section{Erros assíncronos e sockets UDP conectados}
+A ferramenta \ttt{tcpdump} foi utilizada para monitorar a interface 
+\tit{loopback} do sistema. De fato, quando enviou-se um pacote UDP para
+o servidor sem ele estar ativo, a mensagem de erro ICMP apareceu pouco depois.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1.0\linewidth]{img/tcpdump1.png}
+\end{figure}
+
+\item --
+	\begin{enumerate}
+		\item As mensagens do \ttt{tcpdump} não ficaram diferentes, mas o 
+			cliente conectado mostrou um erro, o que não ocorreu com a 
+			versão anterior. Para o \ttt{tcpdump} foi indiferente pois, 
+			na camada de transporte, as coisas continuam as mesmas, ou seja, 
+			o protocolo se comporta da mesma forma.
+			\begin{figure}[H]
+				\centering
+				\includegraphics[width=1.0\linewidth]{img/tcpdump2.png}
+			\end{figure}
+		\item Rodando o servidor, depois o cliente conectado, o nc caiu.
+			Usanto ncat, um simular que tem mensagens mais informativas, 
+			obteve-se um erro de \tit{connection refused}.
+			\begin{figure}[H]
+				\centering
+				\includegraphics[width=1.0\linewidth]{img/tcpdump3.png}
+			\end{figure}
+	\end{enumerate}
+
+\item Há uma pequena diferença constante de desempenho (testei em torno de 
+	8 vezes) onde a versão conectada é algo em torno de um segundo mais rápida
+	que a não conectada para o envio de dez milhões de pacotes. 
+	Fontes que pesquisei~\cite{bokoharam} indicam que o socket UDP conectado
+	passa por menos etapas para o envio de uma mensagem, pois já sabe de
+	antemão o seu destino. 
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=1.0\linewidth]{img/tcpdump4.png}
+	\end{figure}
 \end{enumerate}
+
+\begin{thebibliography}{99}
+	\bibitem{bokoharam}
+		\ttt{http://goo.gl/uC6QSa}
+\end{thebibliography}
 
 \end{document}
