@@ -17,15 +17,6 @@ void error(const char* msg)
 	exit(1);
 }
 
-//sets up address structure
-void set_sockaddr(struct sockaddr_in* sockaddr, unsigned short port)
-{
-	memset((char*)sockaddr, 0, sizeof(struct sockaddr_in));
-	sockaddr->sin_addr.s_addr = htonl(INADDR_ANY);
-	sockaddr->sin_family = AF_INET;
-	sockaddr->sin_port = htons(port);
-}
-
 int main(int argc, char * argv[])
 {
 	struct sockaddr_in serv_addr;
@@ -37,7 +28,6 @@ int main(int argc, char * argv[])
 	int sock;
 	int ret;
 
-	//choosing port number
 	if(argc > 1)
 		port = (unsigned short)atoi(argv[1]);
 	else 
@@ -65,23 +55,25 @@ int main(int argc, char * argv[])
 	if(bind(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
 		error("could not bind");
 
+	//populating 
 	cli_addr_len = sizeof(cli_addr);
+
 	//main echo loop
 	while(1)
 	{
 		//receiving message (if any)
 		ret = recvfrom(sock, buf, BUF_SIZE, 0, 
 			(struct sockaddr*)&cli_addr, &cli_addr_len);
-
 		if(ret < 0)
 			printf("error receiving message from client");
-
+	
+		//printing client message and sending it back
 		if(ret > 0)
 		{
-			printf("[received from %s] %s\n", 
-				inet_ntoa(cli_addr.sin_addr), buf);
+			printf("[received from %s:%u] %s\n", 
+				inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port), buf);
 
-			ret = sendto(sock, buf, 88, 0, 
+			ret = sendto(sock, buf, strlen(buf), 0, 
 				(struct sockaddr*)&cli_addr, sizeof(cli_addr));
 			if(ret < 0)
 				error("error sending message to client");

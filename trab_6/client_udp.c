@@ -13,6 +13,7 @@
 //displays error message and quits
 void error(const char* msg)
 {
+	fprintf(stderr, "[udp_client] ");
 	perror(msg);
 	exit(1);
 }
@@ -53,45 +54,60 @@ int main(int argc, char * argv[])
 
 	//setting up target server address structure
 	memset((char*)&serv_addr, 0, sizeof(serv_addr));
-	memcpy((char *)&serv_addr.sin_addr, hp->h_addr, hp->h_length);
+	memcpy((char*)&serv_addr.sin_addr, hp->h_addr, hp->h_length);
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(port);
 
 	//creating socket
 	sock = socket(PF_INET, SOCK_DGRAM, 0);
 	if(sock < 0) 
-		error("[udp_client]: could not open socket");
+		error("could not open socket");
 
 	//allowing socket to be reused fast
 	opt = 1;
 	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(int));
 
+	//first populating len
+	sender_addr_len = sizeof(sender_addr);
+
 	//main echo loop
 	while(1)
 	{
+		//getting message from console
 		printf(">>> ");
 		if(!fgets(buf, sizeof(buf), stdin))
 			break;
 
+		//sending message to server
 		buf[MAX_LINE-1] = '\0';
 		len = strlen(buf) + 1;
-
 		ret = sendto(sock, buf, len, 0, (struct sockaddr*)&serv_addr, 
 			sizeof(serv_addr));
-
 		if(ret < 0)
-			error("[udp_client] error sending message to server!\n");
+			error("error sending message to server!\n");
 
-		if(ret > 0)
+		//receiving answer from server
+		ret = recvfrom(sock, buf, MAX_LINE, 0, 
+				(struct sockaddr*)&sender_addr, &sender_addr_len);
+		if(ret < 0)
+			error("error receiving message!\n");
+
+		//checking whether it's actually the server
+		if(strcmp((char*)hp->h_addr, (char*)&sender_addr.sin_addr) != 0 || \
+			port != ntohs(sender_addr.sin_port))
 		{
-			ret = recvfrom(sock, buf, MAX_LINE, 0, 
-					(struct sockaddr*)&sender_addr, &sender_addr_len);
-
-			if(ret < 0)
-				error("[udp_client] error receiving message!\n");
-
-			printf("[received from %s] %s\n", 
-				inet_ntoa(sender_addr.sin_addr), buf);
+			printf("someone is pretending to be the server and I'm scared.\n");
+			printf("the perverse person's address is %s:%u\n",
+				inet_ntoa(sender_addr.sin_addr), ntohs(sender_addr.sin_port));
+		}
+		else
+		{
+			//printing server message
+			printf("[received from %s:%u] %s\n", 
+				inet_ntoa(sender_addr.sin_addr), 
+				ntohs(sender_addr.sin_port), buf);
 		}
 	}
+	
+	return 0;
 }
