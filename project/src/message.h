@@ -1,3 +1,6 @@
+#ifndef __MESSAGE_HEADER__
+#define __MESSAGE_HEADER__
+
 #include <string>
 
 class Message
@@ -15,5 +18,7 @@ class Message
 	std::string getContent() const;
 	std::string getSrcUserName() const;
 	std::string getDstUserName() const;
-	unsigned long getId();
+	unsigned long getId() const;
 };
+
+#endif

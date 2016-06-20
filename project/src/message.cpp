@@ -1,5 +1,7 @@
 #include "message.h"
 
+unsigned long Message::num_messages = 0;
+
 Message::Message(const std::string src_user_name, 
 		const std::string dst_user_name, const std::string& content):
 	src_user_name(src_user_name), dst_user_name(dst_user_name), content(content)
@@ -22,7 +24,7 @@ std::string Message::getDstUserName() const
 	return this->dst_user_name;
 }
 
-unsigned long Message::getId()
+unsigned long Message::getId() const
 {
 	return this->id;
 }

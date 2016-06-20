@@ -1,3 +1,6 @@
+#ifndef __USER_HEADER__
+#define __USER_HEADER__
+
 #include <string>
 
 class User
@@ -13,3 +16,5 @@ class User
 	int getPort() const;
 	std::string getIp() const;
 };
+
+#endif

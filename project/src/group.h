@@ -1,3 +1,6 @@
+#ifndef __GROUP_HEADER__
+#define __GROUP_HEADER__
+
 #include <string>
 #include <vector>
 
@@ -9,8 +12,11 @@ class Group
 
 	public:
 	Group(const std::string& name);
-	void addUser(const std::string& user_name);
-	void delUser(const std::string& user_name);
+	bool addUser(const std::string& user_name);
+	bool delUser(const std::string& user_name);
 	bool has(const std::string& user_name) const;
 	std::string getName() const;
+	std::vector<std::string> getUsersNames() const;
 };
+
+#endif
