@@ -113,8 +113,13 @@ void chatViewTest()
 	view.printUsersFromGroup("pilantras");
 }
 
+#include "chatcontroller.h"
 int main()
 {
 	//chatTest();
-	chatViewTest();
+	//chatViewTest();
+
+	cout << USER_NOT_FOUND << endl;
+	cout << GROUP_NOT_FOUND << endl;
+	return 0;
 }

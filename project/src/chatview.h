@@ -12,14 +12,15 @@ class ChatView
 	Chat& model;
 	std::ostream& out;
 	//methods
+	void setColWidth(unsigned width);
 	void setColWidth(const std::vector<std::string>& words);
 	std::string center(const std::string& word);
 	std::string col(const std::string& word);
 	std::string sep(unsigned cols=1);
-	void printTable(const std::vector<std::string>& rows,
-		const std::string header=std::string());
 	void printTable(const std::vector<std::vector<std::string>>& cols, 
 		const std::vector<std::string>& header=std::vector<std::string>());
+	void printTable(const std::vector<std::string>& rows,
+		const std::string header=std::string());
 
 	public:
 	ChatView(Chat& model, std::ostream& out=std::cout);

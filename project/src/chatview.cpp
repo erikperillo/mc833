@@ -7,13 +7,16 @@ ChatView::ChatView(Chat& model, std::ostream& out):
 	col_w(0), model(model), out(out)
 {;}
 
+void ChatView::setColWidth(unsigned width)
+{
+	this->col_w = width;
+}
+
 void ChatView::setColWidth(const std::vector<std::string>& words)
 {
 	for(auto const& w: words)
-		if(w.size() > this->col_w)
-			this->col_w = w.size();
-	
-	this->col_w += 2;
+		if(w.size()+2 > this->col_w)
+			this->col_w = w.size()+2;
 }
 
 std::string ChatView::center(const std::string& word)
@@ -38,27 +41,6 @@ std::string ChatView::sep(unsigned cols)
 	return std::string(cols*(this->col_w + 2), '-');
 }
 
-void ChatView::printTable(const std::vector<std::string>& rows,
-	const std::string header)
-{
-	//getting collumn width
-	this->setColWidth(rows);
-
-	//header
-	if(!header.empty())
-	{
-		this->setColWidth(std::vector<std::string>(1, header));
-		this->out << this->sep() << std::endl;
-		this->out << this->col(header);
-		this->out << std::endl;
-	}
-	//collumns
-	this->out << this->sep() << std::endl;
-	for(auto r: rows)
-		std::cout << this->col(r) << std::endl;
-	this->out << this->sep() << std::endl;
-}
-
 void ChatView::printTable(const std::vector<std::vector<std::string>>& cols,
 	const std::vector<std::string>& header)
 {
@@ -68,13 +50,14 @@ void ChatView::printTable(const std::vector<std::vector<std::string>>& cols,
 			return;
 
 	//getting collumn width
+	this->setColWidth(0);
 	for(auto c: cols)
 		this->setColWidth(c);
+	this->setColWidth(header);
 
 	//header
-	if(header.size() > 0)
+	if(header.size() > 0 && !header[0].empty())
 	{
-		this->setColWidth(header);
 		this->out << this->sep(cols.size()) << std::endl;
 		for(auto const& c: header)
 			this->out << this->col(c);
@@ -89,6 +72,14 @@ void ChatView::printTable(const std::vector<std::vector<std::string>>& cols,
 		this->out << std::endl;
 	}
 	this->out << this->sep(cols.size()) << std::endl;
+}
+
+void ChatView::printTable(const std::vector<std::string>& rows,
+	const std::string header)
+{
+	std::vector<std::vector<std::string>> cols(1, rows);
+	std::vector<std::string> header_vec(1, header);
+	this->printTable(cols, header_vec);
 }
 
 void ChatView::printUsers(const std::string& title)
@@ -117,7 +108,7 @@ bool ChatView::printUsersFromGroup(const std::string& group_name)
 	table.push_back(users_names);
 	table.push_back(groups_names);
 	//creating header
-	std::vector<std::string> header = {"users", "groups"};
+	std::vector<std::string> header = {"users", "group"};
 	//printing table
 	this->printTable(table, header);
 

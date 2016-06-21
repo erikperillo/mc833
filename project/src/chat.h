@@ -36,7 +36,8 @@ class Chat
 	bool addMessage(const Message& msg);
 	bool delMessage(const unsigned long& msg_id);
 	bool hasMessage(const unsigned long& msg_id);
-	Message getMessage(const unsigned long& msg_id) const throw(ElementNotFound);
+	Message getMessage(const unsigned long& msg_id) const 
+		throw(ElementNotFound);
 	std::vector<unsigned long> getMessagesIds() const;
 };
 
