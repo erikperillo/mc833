@@ -10,4 +10,4 @@ all: $(OBJS)
 	$(CC) -c -o $(OBJSDIR)/$@ $< $(CCFLAGS)
 
 test: $(OBJS) test.cpp
-	$(CC) -o test test.cpp $(OBJS) $(CCFLAGS)
+	$(CC) -o test test.cpp $(OBJS) $(CLIFLAGS) $(CCFLAGS)

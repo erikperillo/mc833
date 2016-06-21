@@ -5,6 +5,7 @@
 #include "group.h"
 #include "message.h"
 #include "chatview.h"
+#include "peer.h"
 
 using namespace std;
 
@@ -43,6 +44,12 @@ inline void addMessageCheck(Chat& chat, const Message& msg)
 		" could not be added to chat" << endl;
 	else
 		cout << "message #" << msg.getId() << " added to chat" << endl;
+}
+
+void error(const std::string& msg, int ret_code=1)
+{
+	cout << "error: " << msg << endl;
+	exit(ret_code);
 }
 
 void chatTest()
@@ -113,13 +120,142 @@ void chatViewTest()
 	view.printUsersFromGroup("pilantras");
 }
 
+#define SERVER_PORT 7532
+
+void UDPPeerTestServer()
+{
+	UDPPeer peer;	
+
+	if(peer.setup("127.0.0.1", SERVER_PORT) < 0)
+		error("setup");
+
+	while(true)
+	{
+		if(peer.recv() < 0)
+			error("recv");
+
+		cout << "message received from "
+			<< peer.getSenderIp() << ":" << peer.getSenderPort() << " > "
+			<< peer.getReceivedMsg() << endl;
+
+		if(peer.send(peer.getSenderIp(), peer.getSenderPort(), 
+			peer.getReceivedMsg()) < 0)
+			error("send");
+	}
+}
+
+void TCPPeerTestServer()
+{
+	TCPPeer peer;	
+	int ret;
+
+	if(peer.setup("127.0.0.1", SERVER_PORT) < 0)
+		error("setup");
+
+	if(peer.listen() < 0)
+		error("listen");
+
+	if(peer.accept() < 0)
+		error("accept");
+
+	while(true)
+	{
+		ret = peer.recv();
+		if(ret < 0)
+			error("recv");
+		else if(ret == 0)
+		{
+			cout << "no more messages." << endl;
+			return;
+		}
+
+		cout << "message received from "
+			<< peer.getSenderIp() << ":" << peer.getSenderPort() << " > "
+			<< peer.getReceivedMsg() << endl;
+
+		if(peer.send(peer.getReceivedMsg()) < 0)
+			error("send");
+	}
+}
+
+void UDPPeerTestClient()
+{
+	UDPPeer peer;	
+	UDPPeer dst;
+	std::string msg;
+
+	if(peer.setup("127.0.0.1") < 0)
+		error("setup");
+
+	while(true)
+	{
+		msg = "";
+		cout << ">>> ";
+		cin >> msg;
+
+		if(peer.send("127.0.0.1", SERVER_PORT, msg) < 0)
+			error("send");
+
+		if(peer.recv() < 0)
+			error("recv");
+
+		cout << "message received from "
+			<< peer.getSenderIp() << ":" << peer.getSenderPort() << " > "
+			<< peer.getReceivedMsg() << endl;
+	}
+}
+
+void TCPPeerTestClient()
+{
+	TCPPeer peer;	
+	TCPPeer dst;
+	std::string msg;
+
+	if(peer.setup("127.0.0.1", 7533) < 0)
+		error("setup");
+
+	if(peer.connect("127.0.0.1", SERVER_PORT) < 0)
+		error("connect");
+
+	while(true)
+	{
+		msg = "";
+		cout << ">>> ";
+		cin >> msg;
+
+		if(peer.send(msg) < 0)
+			error("send");
+
+		if(peer.recv() < 0)
+			error("recv");
+
+		cout << "message received from "
+			<< peer.getSenderIp() << ":" << peer.getSenderPort() << " > "
+			<< peer.getReceivedMsg() << endl;
+	}
+}
+
 #include "chatcontroller.h"
 int main()
 {
-	//chatTest();
-	//chatViewTest();
+	#ifdef MODEL
+	chatTest();
+	#endif
+	#ifdef VIEW
+	chatViewTest();
+	#endif
+	#ifdef UDPPEERSERVER
+	UDPPeerTestServer();
+	#endif
+	#ifdef UDPPEERCLIENT
+	UDPPeerTestClient();
+	#endif
+	#ifdef TCPPEERSERVER
+	TCPPeerTestServer();
+	#endif
+	#ifdef TCPPEERCLIENT
+	TCPPeerTestClient();
+	#endif
 
-	cout << USER_NOT_FOUND << endl;
-	cout << GROUP_NOT_FOUND << endl;
 	return 0;
 }
