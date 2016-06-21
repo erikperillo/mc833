@@ -4,6 +4,7 @@
 #include "user.h"
 #include "group.h"
 #include "message.h"
+#include "chatview.h"
 
 using namespace std;
 
@@ -44,7 +45,7 @@ inline void addMessageCheck(Chat& chat, const Message& msg)
 		cout << "message #" << msg.getId() << " added to chat" << endl;
 }
 
-int main()
+void chatTest()
 {
 	Chat chat;
 
@@ -76,6 +77,44 @@ int main()
 	addUserToGroupCheck(chat, "erik", "pilantras");
 	addUserToGroupCheck(chat, "erik", "kajdhf");
 	addUserToGroupCheck(chat, "alkjdfh", "pilantras");
-	
-	return 0;	
+}
+
+void chatViewTest()
+{
+	Chat chat;
+	ChatView view(chat);
+
+	addUserCheck(chat, "erik");
+	addUserCheck(chat, "larissa");
+	addUserCheck(chat, "mario");
+	addUserCheck(chat, "jose");
+	addUserCheck(chat, "leandro");
+
+	addGroupCheck(chat, "safados");
+	addGroupCheck(chat, "pilantras");
+	addGroupCheck(chat, "safados");
+	addGroupCheck(chat, "gostosos");
+
+	Message msg1 = Message("", "", "");
+	Message msg2 = Message("", "", "");
+	addMessageCheck(chat, msg1);
+	addMessageCheck(chat, msg2);
+
+	addUserToGroupCheck(chat, "erik", "safados");
+	addUserToGroupCheck(chat, "erik", "pilantras");
+	addUserToGroupCheck(chat, "larissa", "pilantras");
+
+	cout << "users:" << endl;
+	view.printUsers();
+
+	cout << "groups:" << endl;
+	view.printGroups();
+
+	view.printUsersFromGroup("pilantras");
+}
+
+int main()
+{
+	//chatTest();
+	chatViewTest();
 }

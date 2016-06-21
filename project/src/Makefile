@@ -1,5 +1,5 @@
-DEPS = group.h message.h user.h elementnotfound.h chat.h
-OBJS = group.o message.o user.o elementnotfound.o chat.o 
+DEPS = group.h message.h user.h elementnotfound.h chat.h chatview.h
+OBJS = group.o message.o user.o elementnotfound.o chat.o chatview.o
 OBJSDIR = .
 CC = g++
 CCFLAGS = -std=c++14 -Wall
