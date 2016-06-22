@@ -5,7 +5,8 @@
 #include "group.h"
 #include "message.h"
 #include "chatview.h"
-#include "peer.h"
+#include "net.h"
+#include "protocol.h"
 
 using namespace std;
 
@@ -124,118 +125,184 @@ void chatViewTest()
 
 void UDPPeerTestServer()
 {
-	UDPPeer peer;	
+	NetAddr addr("127.0.0.1", SERVER_PORT);	
+	int sock;
+	NetMessage msg;
+	NetAddr src;
+	
+	if(addr.getErrCode() < 0)
+		error("NetAddr");
 
-	if(peer.setup("127.0.0.1", SERVER_PORT) < 0)
-		error("setup");
+	sock = getSocket(SOCK_DGRAM);	
+	if(sock < 0)
+		error("getSocket");
+
+	if(bind(sock, addr) < 0)
+	{
+		perror("bind");
+		error("bind");
+	}
 
 	while(true)
 	{
-		if(peer.recv() < 0)
-			error("recv");
+		msg = recvFrom(sock);
+		if(msg.getErrCode() < 0)
+			error("recvFrom");	
 
-		cout << "message received from "
-			<< peer.getSenderIp() << ":" << peer.getSenderPort() << " > "
-			<< peer.getReceivedMsg() << endl;
+		src = msg.getSrcAddr();
+		cout << "[" << src.getIp() << ":" << src.getPort() << "] "
+			<< msg.getContent() << endl;
 
-		if(peer.send(peer.getSenderIp(), peer.getSenderPort(), 
-			peer.getReceivedMsg()) < 0)
-			error("send");
+		if(sendTo(sock, src, msg.getContent()) < 0)
+			error("sendTo");
 	}
 }
 
 void TCPPeerTestServer()
 {
-	TCPPeer peer;	
-	int ret;
+	NetAddr addr("127.0.0.1", SERVER_PORT);	
+	int sock;
+	int new_sock;
+	NetMessage msg;
+	NetAddr conn;
+	
+	if(addr.getErrCode() < 0)
+		error("NetAddr");
 
-	if(peer.setup("127.0.0.1", SERVER_PORT) < 0)
-		error("setup");
+	sock = getSocket(SOCK_STREAM);	
+	if(sock < 0)
+		error("getSocket");
 
-	if(peer.listen() < 0)
+	if(bind(sock, addr) < 0)
+	{
+		perror("bind");
+		error("bind");
+	}
+
+	if(attend(sock) < 0)
 		error("listen");
 
-	if(peer.accept() < 0)
+	conn = accept(sock);	
+	new_sock = conn.getErrCode();
+	if(new_sock < 0)
+	{
+		perror("accept");
 		error("accept");
+	}
+
+	cout << "new connection on " << conn.getIp() << ":" << conn.getPort() 
+		<< endl;
 
 	while(true)
 	{
-		ret = peer.recv();
-		if(ret < 0)
-			error("recv");
-		else if(ret == 0)
-		{
-			cout << "no more messages." << endl;
-			return;
-		}
+		msg = recv(new_sock);
+		if(msg.getErrCode() < 0)
+			error("recv");	
+		if(msg.getErrCode() == 0)
+			error("connection ended.");	
 
-		cout << "message received from "
-			<< peer.getSenderIp() << ":" << peer.getSenderPort() << " > "
-			<< peer.getReceivedMsg() << endl;
+		cout << msg.getContent() << endl;
 
-		if(peer.send(peer.getReceivedMsg()) < 0)
+		if(send(new_sock, msg.getContent()) < 0)
 			error("send");
 	}
 }
 
 void UDPPeerTestClient()
 {
-	UDPPeer peer;	
-	UDPPeer dst;
-	std::string msg;
+	NetAddr addr("127.0.0.1", SERVER_PORT+1);	
+	NetAddr dst("127.0.0.1", SERVER_PORT);
+	NetAddr src;
+	int sock;
+	NetMessage msg;
+	std::string str;
+	
+	if(addr.getErrCode() < 0)
+		error("NetAddr1");
+	if(dst.getErrCode() < 0)
+		error("NetAddr2");
 
-	if(peer.setup("127.0.0.1") < 0)
-		error("setup");
+	sock = getSocket(SOCK_DGRAM);	
+	if(sock < 0)
+		error("getSocket");
 
 	while(true)
 	{
-		msg = "";
 		cout << ">>> ";
-		cin >> msg;
+		cin >> str;
 
-		if(peer.send("127.0.0.1", SERVER_PORT, msg) < 0)
-			error("send");
+		//NetMessage message(addr, dst, str);
+		//if(sendTo(sock, message) < 0)
+		if(sendTo(sock, dst, str) < 0)
+			error("sendTo");	
 
-		if(peer.recv() < 0)
-			error("recv");
+		msg = recvFrom(sock);
+		if(msg.getErrCode() < 0)
+			error("recvFrom");
 
-		cout << "message received from "
-			<< peer.getSenderIp() << ":" << peer.getSenderPort() << " > "
-			<< peer.getReceivedMsg() << endl;
+		src = msg.getSrcAddr();
+		cout << "[" << src.getIp() << ":" << src.getPort() << "] "
+			<< msg.getContent() << endl;
 	}
 }
 
 void TCPPeerTestClient()
 {
-	TCPPeer peer;	
-	TCPPeer dst;
-	std::string msg;
+	NetAddr dst("127.0.0.1", SERVER_PORT);	
+	int sock;
+	int ret;
+	NetMessage msg;
+	NetAddr conn;
+	std::string str;
+	
+	if(dst.getErrCode() < 0)
+		error("NetAddr");
 
-	if(peer.setup("127.0.0.1", 7533) < 0)
-		error("setup");
+	sock = getSocket(SOCK_STREAM);	
+	if(sock < 0)
+		error("getSocket");
 
-	if(peer.connect("127.0.0.1", SERVER_PORT) < 0)
-		error("connect");
+	if(connect(sock, dst) < 0)
+		error("connect");	
+
+	cout << "connected to " << dst.getIp() << ":" << dst.getPort() << endl;
 
 	while(true)
 	{
-		msg = "";
 		cout << ">>> ";
-		cin >> msg;
+		cin >> str;
 
-		if(peer.send(msg) < 0)
-			error("send");
+		ret = send(sock, str);
+		if(ret < 0)
+			error("send");	
 
-		if(peer.recv() < 0)
+		msg = recv(sock);
+		if(msg.getErrCode() < 0)
 			error("recv");
 
-		cout << "message received from "
-			<< peer.getSenderIp() << ":" << peer.getSenderPort() << " > "
-			<< peer.getReceivedMsg() << endl;
+		cout << msg.getContent() << endl;
 	}
 }
 
-#include "chatcontroller.h"
+void protocolTest()
+{
+	string str = ":oie::::::::::::td: :bem";
+		
+	cout << "original: " << str << endl;
+	cout << "sanitize: " << sanitize(str) << endl;
+	cout << "desanitize: " << desanitize(sanitize(str)) << endl;
+
+	vector<string> tokens = split(str, ":");
+	for(auto const& t: tokens)
+		cout << t << endl;
+
+	Message _msg("e:rik", "tai::na:", "::::e ai: OTARIA:");
+	string msg = hostToNetMsg(_msg);
+	cout << msg << endl;
+	for(auto const& t: split(msg, ":"))
+		cout << desanitize(t) << endl;
+}
+
 int main()
 {
 	#ifdef MODEL
@@ -255,6 +322,9 @@ int main()
 	#endif
 	#ifdef TCPPEERCLIENT
 	TCPPeerTestClient();
+	#endif
+	#ifdef PROTOCOL
+	protocolTest();
 	#endif
 
 	return 0;

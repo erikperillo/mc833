@@ -30,16 +30,18 @@ class ProtocolFormatError
 };*/
 
 std::string sanitize(const std::string& str);
-std::vector<std::string> split(const std::string& str);
+std::string desanitize(const std::string& str);
+std::vector<std::string> split(const std::string& str, 
+	const std::string& delim);
 std::string initMessage(char message);
 void addField(std::string& str, const std::string& field);
 
 std::string hostToNetMsg(const std::string& src_user_name, 
 	const std::string& dst_user_name, const std::string& content);
+std::string hostToNetMsg(const Message& msg);
 Message netToHostMsg(const std::string& str);
 std::string hostToNetJoinGroup(const std::string& group_name);
 std::string netToHostJoinGroup(const std::string& str);
 std::string hostToNetExit();
-std::string netToHostExit();
 
 #endif

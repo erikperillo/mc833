@@ -10,12 +10,12 @@ std::string ProtocolFormatError::getMessage() const
 
 std::string sanitize(const std::string& str)
 {
-	return std::regex_replace(str, std::regex(SEP), "\"sep");
+	return std::regex_replace(str, std::regex(SEP), "\\sep");
 }
 
 std::string desanitize(const std::string& str)
 {
-	return std::regex_replace(str, std::regex("\"sep"), SEP);
+	return std::regex_replace(str, std::regex("\\\\sep"), SEP);
 }
 
 void addField(std::string& str, const std::string& field)
@@ -23,14 +23,22 @@ void addField(std::string& str, const std::string& field)
 	str += sanitize(field) + SEP;
 }
 
-std::vector<std::string> split(const std::string& str)
+std::vector<std::string> split(const std::string& str, const std::string& delim)
 {
-	std::istringstream iss(str);
 	std::vector<std::string> tokens;
+	std::string token;
+	unsigned i=0;
 
-	std::copy(std::istream_iterator<std::string>(iss),
-		 std::istream_iterator<std::string>(),
-		 std::back_inserter(tokens));
+	while(i < str.size())
+	{
+		while(i < str.size() && str.compare(i, delim.size(), delim))
+			token.push_back(str[i++]);	
+
+		if(!token.empty())
+			tokens.push_back(token);
+		token.clear();
+		i += delim.size();
+	}
 
 	return tokens;
 }
@@ -56,11 +64,22 @@ std::string hostToNetMsg(const std::string& src_user_name,
 	return str;
 }
 
+std::string hostToNetMsg(const Message& msg)
+{
+	std::string str = initMessage(SEND_MSG);
+
+	addField(str, msg.getSrcUserName());
+	addField(str, msg.getDstUserName());
+	addField(str, msg.getContent());
+
+	return str;
+}
+
 Message netToHostMsg(const std::string& str)
 {
 	std::vector<std::string> tokens;
 
-	tokens = split(SEP);
+	tokens = split(str, SEP);
 	if(tokens.size() < 4)
 		return Message("", "", "");	
 
@@ -81,7 +100,7 @@ std::string netToHostJoinGroup(const std::string& str)
 {
 	std::vector<std::string> tokens;
 
-	tokens = split(SEP);
+	tokens = split(str, SEP);
 	if(tokens.size() < 2)
 		return "";
 
