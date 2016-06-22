@@ -56,15 +56,6 @@ int Peer::bind()
 
 	return (ret < 0)?BIND_ERR:SUCCESS;
 }
-/*
-int Peer::listen(int max_pending)
-{
-	int ret;
-
-	ret = ::listen(this->sock, max_pending);
-
-	return (ret < 0)?LISTEN_ERR:SUCCESS;
-}*/
 
 int Peer::getSock() const
 {
@@ -139,19 +130,6 @@ int UDPPeer::send(const struct sockaddr_in& dst, const std::string& msg)
 
 	return SUCCESS;
 }
-/*
-int UDPPeer::send(const Peer& peer, const std::string& msg)
-{
-	struct sockaddr_in dst;
-	int ret;
-
-	ret = fillSockAddrIn(dst, peer.getIp(), peer.getPort(), SOCK_DGRAM,
-		peer.getFamily());
-	if(ret != SUCCESS)
-		return ret;
-
-	return this->send(dst, msg);
-}*/
 
 int UDPPeer::send(const std::string& ip, unsigned short port, 
 	const std::string& msg)
