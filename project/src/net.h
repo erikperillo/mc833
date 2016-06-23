@@ -55,7 +55,7 @@ class NetMessage
 	void setErrCode(int val);
 };
 
-int getSocket(int type, bool reuse=true, int family=AF_INET, int flags=0);
+int getSocket(int type, bool reuse=true, int family=PF_INET, int flags=0);
 int bind(int socket, const NetAddr& addr);
 int attend(int socket, int max_pending=5);
 int connect(int socket, const struct sockaddr_in& addr);

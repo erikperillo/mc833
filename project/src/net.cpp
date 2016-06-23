@@ -141,8 +141,7 @@ int connect(int socket, const NetAddr& addr)
 NetAddr accept(int socket)
 {
 	struct sockaddr_in raw_addr;
-	//socklen_t raw_addr_len = sizeof(raw_addr);
-	socklen_t raw_addr_len;
+	socklen_t raw_addr_len = sizeof(raw_addr);
 	NetAddr addr;
 	int ret;
 
@@ -184,13 +183,17 @@ NetMessage recvFrom(int socket, int flags)
 {
 	int ret;
 	char buf[MAX_BUF_LEN] = "\0";
-	struct sockaddr_in raw_src;
-	socklen_t raw_src_size = sizeof(raw_src);
+	struct sockaddr_in src;
+	struct sockaddr_in dst;
+	socklen_t src_len = sizeof(src);
+	socklen_t dst_len = sizeof(dst);
 	NetMessage msg;
 
 	ret = recvfrom(socket, buf, MAX_BUF_LEN, flags, 
-		(struct sockaddr*)&raw_src, &raw_src_size);
-	msg = NetMessage(NetAddr(raw_src), NetAddr(), std::string(buf));	
+		(struct sockaddr*)&src, &src_len);
+
+	getsockname(socket, (struct sockaddr*)&dst, &dst_len);
+	msg = NetMessage(NetAddr(src), NetAddr(dst), std::string(buf));	
 	msg.setErrCode(ret);
 
 	return msg;
@@ -200,10 +203,17 @@ NetMessage recv(int socket, int flags)
 {
 	int ret;
 	char buf[MAX_BUF_LEN] = "\0";
+	struct sockaddr_in src;
+	struct sockaddr_in dst;
+	socklen_t src_len = sizeof(src);
+	socklen_t dst_len = sizeof(dst);
 	NetMessage msg;
 	
 	ret = recv(socket, buf, MAX_BUF_LEN, flags);		
-	msg = NetMessage(NetAddr(), NetAddr(), std::string(buf));	
+
+	getpeername(socket, (struct sockaddr*)&src, &src_len);
+	getsockname(socket, (struct sockaddr*)&dst, &dst_len);
+	msg = NetMessage(NetAddr(src), NetAddr(dst), std::string(buf));	
 	msg.setErrCode(ret);
 
 	return msg;

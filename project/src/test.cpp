@@ -1,4 +1,6 @@
 #include <iostream>
+#include <thread>
+#include <mutex>
 #include <string>
 #include "chat.h"
 #include "user.h"
@@ -49,7 +51,8 @@ inline void addMessageCheck(Chat& chat, const Message& msg)
 
 void error(const std::string& msg, int ret_code=1)
 {
-	cout << "error: " << msg << endl;
+	cout << "error: ";
+	perror(msg.c_str());
 	exit(ret_code);
 }
 
@@ -123,7 +126,7 @@ void chatViewTest()
 
 #define SERVER_PORT 7532
 
-void UDPPeerTestServer()
+void UDPTestServer()
 {
 	NetAddr addr("127.0.0.1", SERVER_PORT);	
 	int sock;
@@ -158,7 +161,94 @@ void UDPPeerTestServer()
 	}
 }
 
-void TCPPeerTestServer()
+#define MAX_NUM_THREADS 3
+std::mutex mtx;
+bool free_thread[MAX_NUM_THREADS];
+
+void TCPTestServerMTService(int id, int sock)
+{
+	NetMessage msg;
+	NetAddr src;
+
+	while(true)
+	{
+		msg = recv(sock);
+		if(msg.getErrCode() < 0)
+			error("recv");	
+		if(msg.getErrCode() == 0)
+		{
+			cout << "[" << id << "] connection ended." << endl;	
+			return;
+		}
+
+		src = msg.getSrcAddr();
+		cout << "[" << id << "]"
+			<< "[" << src.getIp() << ":" << src.getPort() << "]"
+			<< " " << msg.getContent() << endl;
+
+		//if(send(new_sock, msg.getContent()) < 0)
+		//	error("send");
+	}	
+
+	mtx.lock();
+	free_thread[id] = true;
+	mtx.unlock();
+}
+
+
+void TCPTestServerMT()
+{
+	NetAddr addr("127.0.0.1", SERVER_PORT);
+	NetAddr conn;
+	int sock;
+	int new_sock;
+	int i;
+	std::thread threads[MAX_NUM_THREADS];
+
+	for(int i=0; i<MAX_NUM_THREADS; i++)
+		free_thread[i] = true;
+
+	if(addr.getErrCode() < 0)
+		error("addr");	
+
+	sock = getSocket(SOCK_STREAM);	
+	if(sock < 0)
+		error("getSocket");
+	
+	if(bind(sock, addr) < 0)
+		error("bind");
+	if(attend(sock) < 0)
+		error("attend");
+
+	while(true)
+	{
+		conn = accept(sock);	
+		new_sock = conn.getErrCode();
+		if(new_sock < 0)
+			error("accept");
+
+		mtx.lock();
+		for(i=0; i<MAX_NUM_THREADS; i++)
+			if(free_thread[i])	
+			{
+				cout << "<new connection on " 
+					<< conn.getIp() << ":" << conn.getPort() << ">" << endl;
+				cout << "thread " << i << " is free" << endl;
+				threads[i] = std::thread(TCPTestServerMTService, i, new_sock);
+				free_thread[i] = false;	
+				break;
+			}
+		mtx.unlock();
+
+		if(i == MAX_NUM_THREADS)
+			close(new_sock);
+	}
+
+	for(int i=0; i<MAX_NUM_THREADS; i++)
+		threads[i].join();	
+}
+
+void TCPTestServer()
 {
 	NetAddr addr("127.0.0.1", SERVER_PORT);	
 	int sock;
@@ -208,7 +298,7 @@ void TCPPeerTestServer()
 	}
 }
 
-void UDPPeerTestClient()
+void UDPTestClient()
 {
 	NetAddr addr("127.0.0.1", SERVER_PORT+1);	
 	NetAddr dst("127.0.0.1", SERVER_PORT);
@@ -246,7 +336,7 @@ void UDPPeerTestClient()
 	}
 }
 
-void TCPPeerTestClient()
+void TCPTestClient()
 {
 	NetAddr dst("127.0.0.1", SERVER_PORT);	
 	int sock;
@@ -276,11 +366,11 @@ void TCPPeerTestClient()
 		if(ret < 0)
 			error("send");	
 
-		msg = recv(sock);
-		if(msg.getErrCode() < 0)
-			error("recv");
+		//msg = recv(sock);
+		//if(msg.getErrCode() < 0)
+		//	error("recv");
 
-		cout << msg.getContent() << endl;
+		//cout << msg.getContent() << endl;
 	}
 }
 
@@ -311,20 +401,23 @@ int main()
 	#ifdef VIEW
 	chatViewTest();
 	#endif
-	#ifdef UDPPEERSERVER
-	UDPPeerTestServer();
+	#ifdef UDPSERVER
+	UDPTestServer();
 	#endif
-	#ifdef UDPPEERCLIENT
-	UDPPeerTestClient();
+	#ifdef UDPCLIENT
+	UDPTestClient();
 	#endif
-	#ifdef TCPPEERSERVER
-	TCPPeerTestServer();
+	#ifdef TCPSERVER
+	TCPTestServer();
 	#endif
-	#ifdef TCPPEERCLIENT
-	TCPPeerTestClient();
+	#ifdef TCPCLIENT
+	TCPTestClient();
 	#endif
 	#ifdef PROTOCOL
 	protocolTest();
+	#endif
+	#ifdef TCPSERVERMT
+	TCPTestServerMT();
 	#endif
 
 	return 0;
