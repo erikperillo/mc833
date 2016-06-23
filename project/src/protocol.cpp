@@ -1,4 +1,4 @@
-#include "protocol.h"
+	#include "protocol.h"
 
 /*ProtocolFormatError::ProtocolFormatError(const std::string& msg): msg(msg)
 {;}
@@ -7,6 +7,17 @@ std::string ProtocolFormatError::getMessage() const
 {
 	return this->msg;
 }*/
+
+std::string lower(const std::string& str)
+{
+	std::string res(str);
+
+	for(unsigned i=0; i<res.size(); i++)
+		if(res[i] >= 'A' && res[i] <= 'Z')
+			res[i] = res[i] - ('Z' - 'z');
+
+      return res;
+}
 
 std::string sanitize(const std::string& str)
 {
@@ -43,6 +54,19 @@ std::vector<std::string> split(const std::string& str, const std::string& delim)
 	return tokens;
 }
 
+std::string join(const std::vector<std::string>& tokens, 
+	const std::string& delim, int pos)
+{
+	std::string str;
+
+	for(unsigned i=pos; i<tokens.size()-1; i++)
+		str += tokens[i] + delim;
+	if(tokens.size() - pos > 0)
+		str += tokens[tokens.size()-1];
+
+	return str;
+}
+
 std::string initMessage(char message)
 {
 	std::string str;
@@ -50,6 +74,11 @@ std::string initMessage(char message)
 	str.push_back(message);
 
 	return str + SEP;
+}
+
+char getMessageType(const std::string& str)
+{
+	return (str.size() > 0)?str[0]:UNDEFINED;
 }
 
 std::string hostToNetMsg(const std::string& src_user_name, 
@@ -110,4 +139,33 @@ std::string netToHostJoinGroup(const std::string& str)
 std::string hostToNetExit()
 {
 	return initMessage(EXIT);
+}
+
+std::string hostToNetRet(char code)
+{
+	return initMessage(code);
+}
+
+std::string hostToNetError(char err_code)
+{
+	return hostToNetRet(err_code);
+}
+
+std::string hostToNetRegister(const std::string& name)
+{
+	std::string str(SEP);
+	addField(str, REGISTER_CMD);
+	addField(str, name);
+	return str;
+}
+
+std::string netToHostRegister(const std::string& str)
+{
+	std::vector<std::string> tokens;
+
+	tokens = split(str, SEP);
+	if(tokens.size() < 2)
+		return "";
+
+	return desanitize(tokens[1]);
 }

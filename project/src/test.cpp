@@ -9,6 +9,7 @@
 #include "chatview.h"
 #include "net.h"
 #include "protocol.h"
+#include "hash.h"
 
 using namespace std;
 
@@ -393,6 +394,17 @@ void protocolTest()
 		cout << desanitize(t) << endl;
 }
 
+void hashTest()
+{
+	Message msg1("Paulo", "Henrique", "ey b0ss can i hab da pusy");
+	Message msg2("erik", "ana paula", "huehuebrbr");
+	Message msg3("erik", "ana paula", "uehuebrbr");
+	
+	cout << "hash(msg1) = " << std::hash<Message>{}(msg1) << endl;
+	cout << "hash(msg2) = " << std::hash<Message>{}(msg2) << endl;
+	cout << "hash(msg3) = " << std::hash<Message>{}(msg3) << endl;
+}
+
 int main()
 {
 	#ifdef MODEL
@@ -418,6 +430,9 @@ int main()
 	#endif
 	#ifdef TCPSERVERMT
 	TCPTestServerMT();
+	#endif
+	#ifdef HASH
+	hashTest();
 	#endif
 
 	return 0;

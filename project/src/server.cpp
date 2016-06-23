@@ -22,14 +22,78 @@ void error(const std::string& msg, int ret=1)
 	exit(ret);
 }
 
+vector<string> preProcess(const std::string& raw_msg)
+{
+	return split(raw_msg, " ");
+}
+
+int handle(int socket, const string& raw_msg)
+{
+	vector<string> tokens;
+	string answer;
+	string cmd;
+	string arg_1;
+	string arg_2;
+
+	tokens = preProcess(raw_msg);
+
+	switch(tokens.size())
+	{
+		case 0:
+			answer = INVALID_COMMAND_ERR;
+			break;
+
+		case 1:
+			cmd = lower(tokens[0]);
+			if(cmd == EXIT_CMD)
+				answer = OK;
+			if(cmd == HELP_CMD)
+				answer = HELP;
+			else
+				answer = INVALID_COMMAND_ERR;
+			break;
+
+		case 2:		
+			cmd = lower(tokens[0]);
+			arg_1 = tokens[1];
+			if(cmd == JOIN_GROUP_CMD)
+				answer = OK;
+			if(cmd == REGISTER_CMD)
+				answer = OK;
+			else
+				answer = INVALID_COMMAND_ERR;
+			break;
+
+		//number of args >= 3
+		default:
+			cmd = lower(tokens[0]);
+			arg_1 = tokens[1];
+			if(cmd == SEND_MSG_CMD)
+			{
+				string msg = join(tokens, " ", 2);
+				cout << "message: " << msg << endl;
+				answer = OK;
+			}
+			else
+				answer = INVALID_COMMAND_ERR;
+			break;
+	}
+
+	if(send(socket, answer) < 0)
+		error("send");	
+
+	return 0;
+}
+
 /*
 The worker thread.
 Interacts with each client, providing necessary services
 */
-void serviceLoop(int id, int sock)
+void userInteraction(int id, int sock)
 {
 	NetMessage msg;
 	NetAddr src;
+	//int ret;
 
 	while(true)
 	{
@@ -38,17 +102,19 @@ void serviceLoop(int id, int sock)
 		if(msg.getErrCode() < 0)
 			error("recv");	
 		if(msg.getErrCode() == 0)
-		{
-			cout << "[" << id << "] connection ended." << endl;	
 			break;
-		}
 
 		//displaying message
 		src = msg.getSrcAddr();
 		cout << "[" << id << "]"
 			<< "[" << src.getIp() << ":" << src.getPort() << "]"
 			<< " " << msg.getContent() << endl;
+
+		//handling request
+		handle(sock, msg.getContent());
 	}	
+
+	cout << "[" << id << "] connection ended." << endl;	
 
 	close(sock);
 	//marking itself as free at the end
@@ -107,7 +173,7 @@ void serverLoop()
 
 				cout << "<new connection on " 
 					<< conn.getIp() << ":" << conn.getPort() << ">" << endl;
-				threads[i] = std::thread(serviceLoop, i, conn_sock);
+				threads[i] = std::thread(userInteraction, i, conn_sock);
 				free_thread[i] = false;	
 				break;
 			}
