@@ -44,19 +44,32 @@ class NetMessage
 	NetAddr src;
 	NetAddr dst;	
 	std::string content;
-	void setContent(char* buf, size_t size);
+	//void setContent(char* buf, size_t size);
 
 	public:
 	NetMessage();
 	NetMessage(const NetAddr& src, const NetAddr& dst, 
 		const std::string& content);	
-	NetMessage(const NetAddr& src, const NetAddr& dst, 
-		char* buf, size_t buf_size);
+	//NetMessage(const NetAddr& src, const NetAddr& dst, 
+	//	char* buf, size_t buf_size);
 	NetAddr getSrcAddr() const;
 	NetAddr getDstAddr() const;
 	std::string getContent() const;
 	int getErrCode() const;
 	void setErrCode(int val);
+};
+
+class NetReceiver
+{
+	private:
+	int socket;
+	int buf_len;
+	char buf[MAX_BUF_LEN];
+
+	public:
+	NetReceiver();
+	NetReceiver(int socket);
+	NetMessage recv(int flags=0);
 };
 
 int getSocket(int type, bool reuse=true, int family=PF_INET, int flags=0);

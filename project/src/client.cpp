@@ -11,6 +11,16 @@ using namespace std;
 #define SERVER_NAME "127.0.0.1"
 #define SERVER_PORT 7532
 
+#define REGISTER_CMD "register" 
+#define EXIT_CMD "exit"
+#define JOIN_GROUP_CMD "joing"
+#define SEND_MSG_CMD "sendmsg"
+#define HELP_CMD "help"
+#define INVALID_CMD_ERR "invcom"
+#define NO_SRC_USER_ERR "nosrcusr"
+#define NO_DST_USER_ERR "nodstusr"
+#define MSG_EXISTS_ERR "msgexists"
+
 void error(const string& msg, int ret=1)
 {
 	perror(msg.c_str());
@@ -33,71 +43,67 @@ void displayHelpMessage(const string& prompt="\t")
 	info(string(EXIT_CMD) + " -> exits chat", prompt);
 }
 
+string lower(const string& str)
+{
+	string res(str);
+
+	for(unsigned i=0; i<res.size(); i++)
+		if(res[i] >= 'A' && res[i] <= 'Z')
+			res[i] = res[i] - ('Z' - 'z');
+
+    return res;
+}
+
 string cmdToNetMsg(const string& cmd)
 {
 	vector<string> tokens;
-	string msg(SEP);
+	string msg(FIELD_SEP);
 
 	tokens = split(cmd, " ");
 	for(auto const& tok: tokens)
-		msg += sanitize(tok) + SEP;
+		msg += sanitize(tok) + FIELD_SEP;
 
 	return msg;
 }
 
-int handle(int socket, const string& answer, const string& prompt="[server] ")
+int handle(const string& answer, const string& prompt="[server] ")
 {
-	if(answer == OK)	
-		info("OK", prompt);
-	else if(answer == HELP)
-		displayHelpMessage();
-	else if(answer == NO_SRC_USER_ERR)
-		info("no source user for message registered");
-	else if(answer == NO_DST_USER_ERR)
-		info("no destiny user for message registered");
-	else if(answer == MSG_EXISTS_ERR)
-		info("message already registered");
-	else if(answer == INVALID_CMD_ERR)
-		info("invalid command", prompt);
-	else if(answer == USER_EXISTS_ERR)
+	char header;
+
+	header = netToHostHeader(answer);
+
+	switch(header)
 	{
-		info("cannot register, username already exists", prompt);
-		return -1;
+		case OK:
+			info("OK", prompt);
+			break;
+		case INVALID_REQUEST_ERR:
+			info("ERROR: invalid request", prompt);
+			break;
+		case USER_EXISTS_ERR:
+			info("ERROR: cannot register, username already exists", prompt);
+			return -1;
+			break;
+		default:
+			info("unknown answer", prompt);
+			break;
 	}
-	else
-		info("unknown answer", prompt);
 
 	return 0;
 }
 
-vector<string> dis(char* buf, int size)
-{
-	vector<string> tokens;
-	string tok;
-
-	for(int i=0; i<size; i++)
-	{
-		if(buf[i] == '\0')
-		{
-			tokens.push_back(tok);
-			tok.clear();
-		}
-		else
-			tok.push_back(buf[i]);
-	}
-
-	return tokens;
-}
-
-void observe(int sock, const string& prompt)
+void observe(int sock, string prompt)
 {
 	NetAddr src;
 	NetMessage msg;
+	NetReceiver receiver;
+
+	receiver = NetReceiver(sock);
 
 	while(true)
 	{
 		//receiving server response
-		msg = recv(sock);
+		msg = receiver.recv();
 		if(msg.getErrCode() < 0)
 			error("recv");	
 		if(msg.getErrCode() == 0)
@@ -105,15 +111,81 @@ void observe(int sock, const string& prompt)
 
 		//displaying server response
 		src = msg.getSrcAddr();
-		cout << endl << "[" << src.getIp() << ":" << src.getPort() << "]"
+		cout << "[" << src.getIp() << ":" << src.getPort() << "]"
 			<< " " << msg.getContent() << endl;
 
 		//handling answer
-		for(auto const& str: split(msg.getContent(), string(1, NET_SEP)))
-			handle(sock, str);
+		//for(auto const& str: split(msg.getContent(), string(1, NET_SEP)))
+		//	handle(sock, str);
+		handle(msg.getContent());
 
 		cout << prompt << flush;
 	}
+}
+
+int registerUser(int sock, const string& name)
+{
+	int ret;
+	NetMessage msg;
+	NetReceiver receiver;
+
+	receiver = NetReceiver(sock);
+
+	//sending registering message to server
+	info("registering user '" + name + "'...");
+	ret = send(sock, hostToNetRegister(name));
+	if(ret <= 0)
+		error("send");	
+
+	//receiving answer
+	msg = receiver.recv();
+	if(msg.getErrCode() < 0)
+		error("recv");	
+
+	return handle(msg.getContent());
+}
+
+string cmdToNetMsg(const string& cmd, const string& user_name)
+{
+	vector<string> tokens;
+	string arg_1;
+	string arg_2;
+	string arg_3;
+	string str;
+
+	tokens = split(cmd, " ");
+
+	switch(tokens.size())
+	{
+		case 0:
+			break;
+
+		case 1:
+			arg_1 = lower(tokens[0]);
+			if(arg_1 == EXIT_CMD)
+				str = hostToNetMsg(EXIT);
+			break;
+
+		case 2:		
+			arg_1 = lower(tokens[0]);
+			arg_2 = tokens[1];
+			if(arg_1 == JOIN_GROUP_CMD)
+				str = hostToNetJoinGroup(arg_2);
+			break;
+
+		//number of args >= 3
+		default:
+			arg_1 = lower(tokens[0]);
+			arg_2 = tokens[1];
+			if(arg_1 == SEND_MSG_CMD)
+			{
+				arg_3 = join(tokens, " ", 2);
+				str = hostToNetSendMsg(user_name, arg_2, arg_3);
+			}
+			break;
+	}
+
+	return str;
 }
 
 void client(string& ip, unsigned short port, string& name)
@@ -124,7 +196,7 @@ void client(string& ip, unsigned short port, string& name)
 	NetMessage msg;
 	NetAddr src;
 	string cmd;
-	string str;
+	string request;
 	string prompt;
 	thread thr;
 	
@@ -139,34 +211,38 @@ void client(string& ip, unsigned short port, string& name)
 
 	if(connect(sock, server) < 0)
 		error("connect");	
-
+		
 	info("connected to " + 
-		server.getIp() + ":" + std::to_string(server.getPort()));
+		server.getIp() + ":" + to_string(server.getPort()));
 
-	//sending registering message to server
-	info("registering user '" + name + "'...");
-	str = string(REGISTER_CMD) + " " + name;
-	ret = send(sock, str);
-	if(ret <= 0)
-		error("error sending message to server");	
-	//receiving answer
-	msg = recv(sock);
-	if(msg.getErrCode() < 0)
-		error("recv");	
-	if(handle(sock, msg.getContent()) < 0)
+	if(registerUser(sock, name) < 0)
 		return;
-
+	
 	thr = thread(observe, sock, prompt);
 
+	cout << prompt << flush;
 	while(true)
 	{
 		//getting command from console
-		cout << prompt << flush;
 		getline(cin, cmd);
 
-		str = cmd;
+		if(lower(cmd) == HELP_CMD)
+		{
+			displayHelpMessage();
+			cout << prompt << flush;
+			continue;
+		}
+
+		request = cmdToNetMsg(cmd, name);
+		if(request.empty())
+		{
+			info("invalid command. use 'help' for more info.", prompt);
+			cout << prompt << flush;
+			continue;
+		}
+
 		//sending message
-		ret = send(sock, str);
+		ret = send(sock, request);
 		if(ret < 0)
 			error("error sending message to server");	
 		if(ret == 0)

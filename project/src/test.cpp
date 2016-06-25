@@ -15,7 +15,7 @@ using namespace std;
 
 inline void addUserCheck(Chat& chat, const string& name)
 {
-	if(!chat.addUser(User(name, "127.0.0.1", 0)))
+	if(!chat.addUser(User(name, NetAddr())))
 		cout << "user '" << name << "' could not be added to chat" << endl;
 	else
 		cout << "user '" << name << "' added to chat" << endl;
@@ -44,10 +44,9 @@ inline void addUserToGroupCheck(Chat& chat, const string& user_name,
 inline void addMessageCheck(Chat& chat, const Message& msg)
 {
 	if(!chat.addMessage(msg))
-		cout << "message #" << msg.getId() << 
-		" could not be added to chat" << endl;
+		cout << "message could not be added to chat" << endl;
 	else
-		cout << "message #" << msg.getId() << " added to chat" << endl;
+		cout << "message added to chat" << endl;
 }
 
 void error(const std::string& msg, int ret_code=1)
@@ -377,21 +376,33 @@ void TCPTestClient()
 
 void protocolTest()
 {
-	string str = ":oie::::::::::::td: :bem";
-		
-	cout << "original: " << str << endl;
-	cout << "sanitize: " << sanitize(str) << endl;
-	cout << "desanitize: " << desanitize(sanitize(str)) << endl;
+	Message msg;
+	Message msg2;
+	string str;
+	string str2;
 
-	vector<string> tokens = split(str, ":");
-	for(auto const& t: tokens)
-		cout << t << endl;
+	str = "joels:on;";
+	str2 = hostToNetRegister(str);
+	cout << "hostToNetRegister(" << str << ") = " << str2 << endl;
+	cout << "netToHostRegister(" << str2 << ") = " 
+		<< netToHostRegister(str2) << endl;
 
-	Message _msg("e:rik", "tai::na:", "::::e ai: OTARIA:");
-	string msg = hostToNetMsg(_msg);
-	cout << msg << endl;
-	for(auto const& t: split(msg, ":"))
-		cout << desanitize(t) << endl;
+	str = "igreja: pentecostal;;; jesus";
+	str2 = hostToNetJoinGroup(str);
+	cout << "hostToNetJoinGroup(" << str << ") = " << str2 << endl;
+	cout << "netToHostJoinGroup(" << str2 << ") = " 
+		<< netToHostJoinGroup(str2) << endl;
+
+	msg = Message("er;;i;:;k", "ta::ina", "e ai: otaria; bls???");
+	cout << "input (src/dst/content): "
+		<< msg.getSrcUserName() << "/" << msg.getDstUserName() << "/" 
+		<< msg.getContent() << endl;
+	str = hostToNetSendMsg(msg);
+	cout << "str = " << str << endl;
+	msg2 = netToHostSendMsg(str);
+	cout << "output (src/dst/content): "
+		<< msg2.getSrcUserName() << "/" << msg2.getDstUserName() << "/" 
+		<< msg2.getContent() << endl;
 }
 
 void hashTest()

@@ -66,17 +66,18 @@ struct sockaddr_in NetAddr::getRawAddr() const
 	return this->raw_addr;
 }
 
-NetMessage::NetMessage()
+NetMessage::NetMessage(): err_code(0)
 {;}
 
 NetMessage::NetMessage(const NetAddr& src, const NetAddr& dst, 
-	const std::string& content)
+	const std::string& content): err_code(0)
 {
 	this->src = src;
 	this->dst = dst;
 	this->content = content;
 }
 
+/*
 NetMessage::NetMessage(const NetAddr& src, const NetAddr& dst, 
 	char* buf, size_t buf_size)
 {
@@ -90,7 +91,7 @@ void NetMessage::setContent(char* buf, size_t size)
 	this->content.clear();
 	for(unsigned i=0; i<size-1; i++)
 		this->content.push_back((buf[i] == '\0')?NET_SEP:buf[i]);
-}
+}*/
 
 NetAddr NetMessage::getSrcAddr() const
 {
@@ -115,6 +116,62 @@ int NetMessage::getErrCode() const
 void NetMessage::setErrCode(int val)
 {
 	this->err_code = val;
+}
+
+NetReceiver::NetReceiver(): socket(-1), buf_len(0)
+{
+	memset(this->buf, 0, MAX_BUF_LEN);
+	this->buf[0] = '\0';
+}
+
+NetReceiver::NetReceiver(int socket): socket(socket), buf_len(0)
+{
+	memset(this->buf, 0, MAX_BUF_LEN);
+	this->buf[0] = '\0';
+}
+
+NetMessage NetReceiver::recv(int flags)
+{
+	int ret;
+	int i;
+	char recv_buf[MAX_BUF_LEN];
+	struct sockaddr_in src;
+	struct sockaddr_in dst;
+	socklen_t src_len = sizeof(src);
+	socklen_t dst_len = sizeof(dst);
+	NetMessage msg;
+	std::string str;
+
+	for(i=0; i<this->buf_len; i++)
+		str.push_back(this->buf[i]);
+	this->buf_len = 0;
+
+	while(true)
+	{
+		ret = ::recv(this->socket, recv_buf, MAX_BUF_LEN, flags);		
+		if(ret <= 0)
+			return NetMessage(NetAddr(src), NetAddr(dst), std::string());	
+
+		for(i=0; i<ret; i++)
+			if(recv_buf[i] == NET_SEP)
+			{
+				memcpy(this->buf+this->buf_len, recv_buf+i+1, ret-i-1);
+				this->buf_len = ret-i-1;
+				break;	
+			}
+			else
+				str.push_back(recv_buf[i]);
+
+		if(i < ret)
+			break;
+	}
+
+	getpeername(socket, (struct sockaddr*)&src, &src_len);
+	getsockname(socket, (struct sockaddr*)&dst, &dst_len);
+	msg = NetMessage(NetAddr(src), NetAddr(dst), str);
+	msg.setErrCode(SUCCESS);
+
+	return msg;
 }
 
 int getSocket(int type, bool reuse, int family, int flags)
@@ -219,10 +276,7 @@ NetMessage recvFrom(int socket, int flags)
 		(struct sockaddr*)&src, &src_len);
 
 	getsockname(socket, (struct sockaddr*)&dst, &dst_len);
-	if(ret < 0)
-		msg = NetMessage(NetAddr(src), NetAddr(dst), std::string());	
-	else
-		msg = NetMessage(NetAddr(src), NetAddr(dst), buf, (size_t)ret);
+	msg = NetMessage(NetAddr(src), NetAddr(dst), std::string(buf));	
 	msg.setErrCode(ret);
 
 	return msg;
@@ -231,21 +285,20 @@ NetMessage recvFrom(int socket, int flags)
 NetMessage recv(int socket, int flags)
 {
 	int ret;
-	char buf[MAX_BUF_LEN] = "\0";
+	char buf[MAX_BUF_LEN];
 	struct sockaddr_in src;
 	struct sockaddr_in dst;
 	socklen_t src_len = sizeof(src);
 	socklen_t dst_len = sizeof(dst);
 	NetMessage msg;
-	
+	std::string str;
+
 	ret = recv(socket, buf, MAX_BUF_LEN, flags);		
+	buf[MAX_BUF_LEN-1] = '\0';
 
 	getpeername(socket, (struct sockaddr*)&src, &src_len);
 	getsockname(socket, (struct sockaddr*)&dst, &dst_len);
-	if(ret <= 0)
-		msg = NetMessage(NetAddr(src), NetAddr(dst), std::string());	
-	else
-		msg = NetMessage(NetAddr(src), NetAddr(dst), buf, (size_t)ret);
+	msg = NetMessage(NetAddr(src), NetAddr(dst), std::string(buf));
 	msg.setErrCode(ret);
 
 	return msg;

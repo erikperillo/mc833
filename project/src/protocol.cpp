@@ -1,4 +1,4 @@
-	#include "protocol.h"
+#include "protocol.h"
 
 /*ProtocolFormatError::ProtocolFormatError(const std::string& msg): msg(msg)
 {;}
@@ -7,7 +7,7 @@ std::string ProtocolFormatError::getMessage() const
 {
 	return this->msg;
 }*/
-
+/*
 std::string lower(const std::string& str)
 {
 	std::string res(str);
@@ -17,21 +17,20 @@ std::string lower(const std::string& str)
 			res[i] = res[i] - ('Z' - 'z');
 
       return res;
-}
+}*/
 
 std::string sanitize(const std::string& str)
 {
-	return std::regex_replace(str, std::regex(SEP), "\\sep");
+	std::string sane_str;
+	sane_str = std::regex_replace(str, std::regex(FIELD_SEP), "\\fsep");
+	return std::regex_replace(sane_str, std::regex(MSG_SEP), "\\msep");
 }
 
 std::string desanitize(const std::string& str)
 {
-	return std::regex_replace(str, std::regex("\\\\sep"), SEP);
-}
-
-void addField(std::string& str, const std::string& field)
-{
-	str += sanitize(field) + SEP;
+	std::string insane_str;
+	insane_str = std::regex_replace(str, std::regex("\\\\fsep"), FIELD_SEP);
+	return std::regex_replace(insane_str, std::regex("\\\\msep"), MSG_SEP);
 }
 
 std::vector<std::string> split(const std::string& str, const std::string& delim)
@@ -67,105 +66,124 @@ std::string join(const std::vector<std::string>& tokens,
 	return str;
 }
 
-std::string initMessage(char message)
+std::string initMsg(char message)
+{
+	std::string str;
+	str.push_back(message);
+	return str + FIELD_SEP;
+}
+
+void addField(std::string& str, const std::string& field)
+{
+	str += sanitize(field) + FIELD_SEP;
+}
+
+void endMsg(std::string& str)
+{
+	str += MSG_SEP;
+}
+
+std::string hostToNetHeader(char message)
 {
 	std::string str;
 
-	str.push_back(message);
+	str = initMsg(message);
+	endMsg(str);
 
-	return str + SEP;
+	return str;
 }
 
-char getMessageType(const std::string& str)
+char netToHostHeader(const std::string& str)
 {
 	return (str.size() > 0)?str[0]:UNDEFINED;
 }
 
-std::string hostToNetMsg(const std::string& src_user_name, 
-	const std::string& dst_user_name, const std::string& content)
+std::string hostToNetMsg(char message)
 {
-	std::string str = initMessage(SEND_MSG);
-
-	addField(str, src_user_name);
-	addField(str, dst_user_name);
-	addField(str, content);
-
-	return str;
+	return hostToNetHeader(message);
 }
 
-std::string hostToNetMsg(const Message& msg)
+std::string hostToNetMsg(char message, std::vector<std::string> args)
 {
-	std::string str = initMessage(SEND_MSG);
+	std::string msg;
+	
+	msg = initMsg(message);
+	for(auto const& arg: args)
+		addField(msg, arg);
+	endMsg(msg);
 
-	addField(str, msg.getSrcUserName());
-	addField(str, msg.getDstUserName());
-	addField(str, msg.getContent());
-
-	return str;
+	return msg;
 }
 
-Message netToHostMsg(const std::string& str)
+std::vector<std::string> netToHostMsg(std::string msg)
 {
+	std::vector<std::string> args;
 	std::vector<std::string> tokens;
+	
+	tokens = split(msg, FIELD_SEP);
+	for(unsigned i=1; i<tokens.size(); i++)
+		args.push_back(desanitize(tokens[i]));
 
-	tokens = split(str, SEP);
-	if(tokens.size() < 4)
-		return Message("", "", "");	
-
-	return Message(desanitize(tokens[1]), desanitize(tokens[2]), 
-		desanitize(tokens[3]));
-}
-
-std::string hostToNetJoinGroup(const std::string& group_name)
-{
-	std::string str = initMessage(JOIN_GROUP);
-
-	addField(str, group_name);
-
-	return str;
-}
-
-std::string netToHostJoinGroup(const std::string& str)
-{
-	std::vector<std::string> tokens;
-
-	tokens = split(str, SEP);
-	if(tokens.size() < 2)
-		return "";
-
-	return desanitize(tokens[1]);
-}
-
-std::string hostToNetExit()
-{
-	return initMessage(EXIT);
-}
-
-std::string hostToNetRet(char code)
-{
-	return initMessage(code);
-}
-
-std::string hostToNetError(char err_code)
-{
-	return hostToNetRet(err_code);
+	return args;
 }
 
 std::string hostToNetRegister(const std::string& name)
 {
-	std::string str(SEP);
-	addField(str, REGISTER_CMD);
-	addField(str, name);
-	return str;
+	return hostToNetMsg(REGISTER, {name});
 }
 
 std::string netToHostRegister(const std::string& str)
 {
-	std::vector<std::string> tokens;
+	std::vector<std::string> args;
 
-	tokens = split(str, SEP);
-	if(tokens.size() < 2)
-		return "";
+	args = netToHostMsg(str);
 
-	return desanitize(tokens[1]);
+	return (args.size() < 1)?"":args[0];
+}
+
+std::string hostToNetSendMsg(const std::string& src_user_name, 
+	const std::string& dst_user_name, const std::string& content)
+{
+	return hostToNetMsg(SEND_MSG, {src_user_name, dst_user_name, content});
+}
+
+std::string hostToNetSendMsg(const Message& msg)
+{
+	return hostToNetSendMsg(msg.getSrcUserName(), msg.getDstUserName(),
+		msg.getContent());
+}
+
+Message netToHostSendMsg(const std::string& str)
+{
+	std::vector<std::string> args;
+
+	args = netToHostMsg(str);
+	if(args.size() < 3)
+		return Message("", "", "");
+
+	return Message(args[0], args[1], args[2]);
+}
+
+std::string hostToNetJoinGroup(const std::string& group_name)
+{
+	return hostToNetMsg(JOIN_GROUP, {group_name});
+}
+
+std::string netToHostJoinGroup(const std::string& str)
+{
+	std::vector<std::string> args;
+
+	args = netToHostMsg(str);
+
+	return (args.size() < 1)?"":desanitize(args[0]);
+}
+
+std::string hostToNetExit()
+{
+	return hostToNetHeader(EXIT);
+}
+
+std::string hostToNetHelp()
+{
+	return hostToNetHeader(HELP);
 }

@@ -35,73 +35,46 @@ vector<string> preProcess(const std::string& raw_msg)
 {
 	return split(raw_msg, " ");
 }
-int m_count = 0;
+
 int handle(int socket, const string& str, const User& user)
 {
-	vector<string> tokens;
+	char header;
+	bool ret;
 	string answer;
-	string cmd;
-	string arg_1;
-	string arg_2;
+	Message msg;
 
-	tokens = preProcess(str);
+	header = netToHostHeader(str);
 
-	switch(tokens.size())
+	switch(header)
 	{
-		case 0:
-			answer = INVALID_CMD_ERR;
-			break;
-
-		case 1:
-			cmd = lower(tokens[0]);
-			if(cmd == EXIT_CMD)
-				answer = OK;
-			if(cmd == HELP_CMD)
-				answer = HELP;
+		case SEND_MSG:
+			msg = netToHostSendMsg(str);		
+			if(msg.getSrcUserName().empty())
+				answer = hostToNetMsg(INVALID_REQUEST_ERR);	
 			else
-				answer = INVALID_CMD_ERR;
-			break;
-
-		case 2:		
-			cmd = lower(tokens[0]);
-			arg_1 = tokens[1];
-			if(cmd == JOIN_GROUP_CMD)
-				answer = OK;
-			break;
-
-		//number of args >= 3
-		default:
-			cmd = lower(tokens[0]);
-			arg_1 = tokens[1];
-			if(cmd == SEND_MSG_CMD)
 			{
-				string msg_content = join(tokens, " ", 2);
-				Message msg(user.getName(), arg_1, msg_content);
-				cout << "message: " << msg.getContent() << endl;
-
 				chat_mtx.lock();
-				if(!chat.hasUser(msg.getSrcUserName()))
-					answer = NO_SRC_USER_ERR;
-				else if(!chat.hasUser(msg.getDstUserName()))
-					answer = NO_DST_USER_ERR;
-				else if(!chat.addMessage(msg))
-					answer = MSG_EXISTS_ERR;
-				else
-					answer = MSG_QUEUED;
+				ret = chat.addMessage(msg);
 				chat_mtx.unlock();
+				if(!ret)
+					answer = hostToNetMsg(MSG_EXISTS_ERR);
+				else
+					answer = hostToNetMsg(MSG_QUEUED);
 			}
-			else
-				answer = INVALID_CMD_ERR;
+			break;
+
+		default:
+			answer = hostToNetMsg(INVALID_REQUEST_ERR);
 			break;
 	}
 
 	if(send(socket, answer) < 0)
-		error("send");	
+		error("send");
 
 	return 0;
 }
 
-User registerUser(int sock)
+User registerUser(NetReceiver& receiver)
 {
 	User user;
 	vector<string> tokens;
@@ -109,17 +82,20 @@ User registerUser(int sock)
 	NetMessage msg;
 	NetAddr src;
 	bool ret;
+	char header;
 
-	msg = recv(sock);
+	msg = receiver.recv();
 	if(msg.getErrCode() < 0)
 		error("recv");	
 
-	tokens = preProcess(msg.getContent());
-	if(tokens.size() < 2 || lower(tokens[0]) != REGISTER_CMD)
-		return User(INVALID_CMD_ERR, NetAddr());
+	header = netToHostHeader(msg.getContent());
+	if(header != REGISTER)
+		return User(hostToNetHeader(INVALID_REQUEST_ERR), NetAddr());
 	
-	src = msg.getSrcAddr();
-	user_name = tokens[1];
+	user_name = netToHostRegister(msg.getContent());
+	if(user_name.empty())
+		return User(hostToNetHeader(INVALID_REQUEST_ERR), NetAddr());
+
 	//trying to add user to chat
 	chat_mtx.lock();
 	ret = chat.addUser(User(user_name, src));
@@ -130,7 +106,7 @@ User registerUser(int sock)
 	{
 		//user is being used by another host
 		if(user.getAddr().getIp() != src.getIp())
-			return User(USER_EXISTS_ERR, NetAddr());
+			return User(hostToNetHeader(USER_EXISTS_ERR), NetAddr());
 		//user is getting online again
 		chat_mtx.lock();
 		chat.delUserFromGroup(user_name, OFFLINE_GROUP);
@@ -152,35 +128,42 @@ User registerUser(int sock)
 The worker thread.
 Interacts with each client, providing necessary services
 */
-void userInteraction(int id, int sock, NetAddr src)
+void userInteraction(int id, int sock)
 {
+	NetAddr src;
 	NetMessage msg;
 	string answer;
 	User user;
+	NetReceiver receiver;
+	char header;
+
+	//creating receiver object
+	receiver = NetReceiver(sock);
 
 	//registering user
-	user = registerUser(sock);
-	if(user.getName() == USER_EXISTS_ERR || user.getName() == INVALID_CMD_ERR)
-		answer = user.getName();
+	user = registerUser(receiver);
+	header = netToHostHeader(msg.getContent());
+	if(header == USER_EXISTS_ERR || header == INVALID_REQUEST_ERR)
+		answer = hostToNetMsg(header);
 	else
-		answer = OK;
+		answer = hostToNetMsg(OK);
 	if(send(sock, answer) < 0)
 		error("send");	
 
 	//main loop
-	if(answer == OK)
+	if(answer == hostToNetMsg(OK))
 	{
 		while(true)
 		{
-			cout << "end" << endl << flush;
 			//receiving message from client
-			msg = recv(sock);
+			msg = receiver.recv();
 			if(msg.getErrCode() < 0)
 				error("recv");	
 			if(msg.getErrCode() == 0)
 				break;
 
 			//displaying message
+			src = msg.getSrcAddr();
 			cout << "[" << id << "]"
 				<< "[" << src.getIp() << ":" << src.getPort() << "]"
 				<< " " << msg.getContent() << endl;
@@ -260,7 +243,7 @@ void serverLoop()
 			free_thread_mtx.lock();
 			free_thread[i] = false;	
 			free_thread_mtx.unlock();
-			threads[i] = std::thread(userInteraction, i, conn_sock, conn);
+			threads[i] = std::thread(userInteraction, i, conn_sock);
 		}
 	}
 
@@ -274,18 +257,6 @@ int main()
 	//creating first groups
 	chat.addGroup(ONLINE_GROUP);
 	chat.addGroup(OFFLINE_GROUP);
-
-	stringstream ss;
-	ChatView view(chat, ss);
-
-	view.printGroups();
-	cout << ss.str();
-
-	ss.str(string());
-	view.printUsersFromGroup(ONLINE_GROUP);
-	view.printUsersFromGroup(OFFLINE_GROUP, false);
-	cout << ss.str();
-	return 0;
 
 	serverLoop();
 
