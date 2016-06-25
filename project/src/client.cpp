@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <thread>
 #include <mutex>
 #include <chrono>
@@ -10,6 +11,7 @@ using namespace std;
 
 #define SERVER_NAME "127.0.0.1"
 #define SERVER_PORT 7532
+#define HASH_CUT 6
 
 #define REGISTER_CMD "register" 
 #define EXIT_CMD "exit"
@@ -19,7 +21,9 @@ using namespace std;
 #define INVALID_CMD_ERR "invcom"
 #define NO_SRC_USER_ERR "nosrcusr"
 #define NO_DST_USER_ERR "nodstusr"
-#define MSG_EXISTS_ERR "msgexists"
+
+vector<size_t> messages_ids;
+std::mutex messages_ids_mtx;
 
 void error(const string& msg, int ret=1)
 {
@@ -69,6 +73,7 @@ string cmdToNetMsg(const string& cmd)
 int handle(const string& answer, const string& prompt="[server] ")
 {
 	char header;
+	int ret = 0;
 
 	header = netToHostHeader(answer);
 
@@ -80,16 +85,52 @@ int handle(const string& answer, const string& prompt="[server] ")
 		case INVALID_REQUEST_ERR:
 			info("ERROR: invalid request", prompt);
 			break;
+		case MSG_QUEUED:
+		{
+			size_t msg_id;
+			msg_id = netToHostMsgQueued(answer);
+			info("message #" + to_string(msg_id).substr(0, HASH_CUT) 
+				+ " queued to be sent!", prompt);
+			messages_ids_mtx.lock();
+			messages_ids.push_back(msg_id);
+			messages_ids_mtx.unlock();
+			break;
+		}
+		case MSG_SENT:
+		{
+			size_t msg_id;
+			msg_id = netToHostMsgSent(answer);
+			info("message #" + to_string(msg_id).substr(0, HASH_CUT) 
+				+ " was sent to destination!", prompt);
+			messages_ids_mtx.lock();
+			messages_ids.erase(remove(messages_ids.begin(), messages_ids.end(),
+				msg_id), messages_ids.end());
+			messages_ids_mtx.unlock();
+			break;
+		}
+		case MSG_INCOMING:
+		{
+			Message msg = netToHostMsgIncoming(answer);
+			info(msg.getContent(), "[msg from " + msg.getSrcUserName() + "] ");
+			break;
+		}
+		case MSG_EXISTS:
+			info("message already queued to be sent", prompt);
+			break;
+		case NO_MSG_DST_ERR:
+			info("ERROR: destiny user does not exist", prompt);
+			ret = -1;
+			break;
 		case USER_EXISTS_ERR:
 			info("ERROR: cannot register, username already exists", prompt);
-			return -1;
+			ret = -1;
 			break;
 		default:
 			info("unknown answer", prompt);
 			break;
 	}
 
-	return 0;
+	return ret;
 }
 
 void observe(int sock, string prompt)

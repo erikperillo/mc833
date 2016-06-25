@@ -152,7 +152,11 @@ NetMessage NetReceiver::recv(int flags)
 		if(ret <= 0)
 			return NetMessage(NetAddr(src), NetAddr(dst), std::string());	
 
+		if(buf[ret-1] == '\0')
+			ret--;
+
 		for(i=0; i<ret; i++)
+		{
 			if(recv_buf[i] == NET_SEP)
 			{
 				memcpy(this->buf+this->buf_len, recv_buf+i+1, ret-i-1);
@@ -161,6 +165,7 @@ NetMessage NetReceiver::recv(int flags)
 			}
 			else
 				str.push_back(recv_buf[i]);
+		}
 
 		if(i < ret)
 			break;
@@ -172,6 +177,11 @@ NetMessage NetReceiver::recv(int flags)
 	msg.setErrCode(SUCCESS);
 
 	return msg;
+}
+
+int NetReceiver::getSocket()
+{
+	return this->socket;
 }
 
 int getSocket(int type, bool reuse, int family, int flags)

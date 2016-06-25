@@ -70,6 +70,7 @@ class NetReceiver
 	NetReceiver();
 	NetReceiver(int socket);
 	NetMessage recv(int flags=0);
+	int getSocket();
 };
 
 int getSocket(int type, bool reuse=true, int family=PF_INET, int flags=0);

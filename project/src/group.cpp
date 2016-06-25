@@ -1,5 +1,8 @@
 #include "group.h"
 
+Group::Group()
+{;}
+
 Group::Group(const std::string& name): name(name)
 {;}
 

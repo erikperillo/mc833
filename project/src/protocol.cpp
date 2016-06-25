@@ -178,12 +178,50 @@ std::string netToHostJoinGroup(const std::string& str)
 	return (args.size() < 1)?"":desanitize(args[0]);
 }
 
-std::string hostToNetExit()
+std::string hostToNetMsgQueued(std::size_t msg_id)
 {
-	return hostToNetHeader(EXIT);
+	return hostToNetMsg(MSG_QUEUED, {std::to_string(msg_id)});
 }
 
-std::string hostToNetHelp()
+std::size_t netToHostMsgQueued(const std::string msg, int to_cut)
 {
-	return hostToNetHeader(HELP);
+	std::vector<std::string> args;
+	size_t msg_id;
+	
+	args = netToHostMsg(msg);
+	if(args.size() < 1)
+		return 0;
+
+	std::string str = args[0].substr(0, (to_cut >= 0)?to_cut:std::string::npos);
+	std::stringstream ss(str);
+	ss >> msg_id;
+
+	return msg_id;
+}
+
+std::string hostToNetMsgSent(std::size_t msg_id)
+{
+	return hostToNetMsg(MSG_SENT, {std::to_string(msg_id)});
+}
+
+std::size_t netToHostMsgSent(const std::string msg, int to_cut)
+{
+	return netToHostMsgQueued(msg, to_cut);
+}
+
+std::string hostToNetMsgIncoming(const Message& msg)
+{
+	return hostToNetMsg(MSG_INCOMING, 
+		{msg.getSrcUserName(), msg.getDstUserName(), msg.getContent()});
+}
+
+Message netToHostMsgIncoming(const std::string& msg)
+{
+	std::vector<std::string> args;
+
+	args = netToHostMsg(msg);
+	if(args.size() < 3)
+		return Message("", "", "");
+
+	return Message(args[0], args[1], args[2]);
 }

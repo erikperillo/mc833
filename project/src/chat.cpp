@@ -54,23 +54,23 @@ std::vector<std::string> Chat::getGroupsNames() const
 	return names;
 }
 
-bool Chat::addUser(const User& user)
+bool Chat::addUser(const User& user, int socket)
 {
 	//checking to see if group is already inserted
-	for(auto const& g: this->users)
-		if(g.getName() == user.getName())
+	for(auto& u: this->users)
+		if(u.second.getName() == user.getName())
 			return false;
 
-	this->users.push_back(user);
+	this->users[socket] = user;
 	return true;
 }
 
 bool Chat::delUser(const std::string& user_name)
 {
-	for(unsigned i=0; i<this->users.size(); i++)
-		if(this->users[i].getName() == user_name)
+	for(auto const& u: this->users)
+		if(u.second.getName() == user_name)
 		{
-			this->users.erase(this->users.begin() + i);
+			this->users.erase(u.first);
 			return true;
 		}
 
@@ -80,7 +80,7 @@ bool Chat::delUser(const std::string& user_name)
 bool Chat::hasUser(const std::string& user_name)
 {
 	for(auto const& u: this->users)
-		if(u.getName() == user_name)
+		if(u.second.getName() == user_name)
 			return true;
 
 	return false;
@@ -89,8 +89,8 @@ bool Chat::hasUser(const std::string& user_name)
 User Chat::getUser(const std::string& user_name) const throw(ElementNotFound)
 {
 	for(auto const& u: this->users)
-		if(u.getName() == user_name)
-			return u;
+		if(u.second.getName() == user_name)
+			return u.second;
 
 	throw ElementNotFound("user " + user_name + " could not be found");
 }
@@ -100,9 +100,18 @@ std::vector<std::string> Chat::getUsersNames() const
 	std::vector<std::string> names;
 
 	for(auto const& u: this->users)
-		names.push_back(u.getName());
+		names.push_back(u.second.getName());
 
 	return names;
+}
+
+int Chat::getSocketFromUser(const std::string& user_name)
+{
+	for(auto const& u: this->users)
+		if(u.second.getName() == user_name)
+			return u.first;
+
+	return -1;
 }
 
 bool Chat::addUserToGroup(const std::string& user_name,

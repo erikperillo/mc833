@@ -24,8 +24,11 @@ enum messages: char
 	REGISTER,
 	EXIT,
 	MSG_QUEUED,
+	MSG_SENT,
+	MSG_EXISTS,
+	MSG_INCOMING,
 	INVALID_REQUEST_ERR,
-	MSG_EXISTS_ERR,
+	NO_MSG_DST_ERR,
 	USER_EXISTS_ERR
 };
 
@@ -72,7 +75,13 @@ Message netToHostSendMsg(const std::string& str);
 std::string hostToNetJoinGroup(const std::string& group_name);
 std::string netToHostJoinGroup(const std::string& str);
 
-std::string hostToNetExit();
-std::string hostToNetHelp();
+std::string hostToNetMsgQueued(std::size_t msg_id);
+std::size_t netToHostMsgQueued(const std::string msg, int to_cut=-1);
+
+std::string hostToNetMsgSent(std::size_t msg_id);
+std::size_t netToHostMsgSent(const std::string msg, int to_cut=-1);
+
+std::string hostToNetMsgIncoming(const Message& msg);
+Message netToHostMsgIncoming(const std::string& msg);
 
 #endif

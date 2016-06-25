@@ -15,6 +15,7 @@ using namespace std;
 #define OFFLINE_GROUP "offline"
 #define SERVER_NAME "127.0.0.1"
 #define SERVER_PORT 13254
+#define MSG_LOOP_TIME_MS 2000
 #define MAX_NUM_THREADS 3
 
 //mutexes
@@ -36,10 +37,65 @@ vector<string> preProcess(const std::string& raw_msg)
 	return split(raw_msg, " ");
 }
 
+void messagesLoop()
+{
+	vector<size_t> messages_ids;
+	Message msg;
+	Group online;
+	string src;
+	string dst;
+	string net_msg;
+	int sock;
+	size_t msg_id;
+
+	while(true)
+	{
+		chat_mtx.lock();	
+		messages_ids = chat.getMessagesIds();		
+		for(auto const& id: messages_ids)
+		{
+			online = chat.getGroup(ONLINE_GROUP);
+			msg = chat.getMessage(id);
+			src = msg.getSrcUserName();
+			dst = msg.getDstUserName();
+			if(online.has(src) && online.has(dst))
+			{
+				sock = chat.getSocketFromUser(dst);	
+				net_msg = hostToNetMsgIncoming(msg);
+				cout << "sock1 = " << sock << endl;
+				//sending message to destiny user
+				if(send(sock, net_msg) < 0)
+				{
+					cout << "error sending message from " + src + " to " + dst
+						<< ":" << endl;
+					perror("");
+				}
+				else
+				{
+					msg_id = hash<Message>{}(msg);
+					chat.delMessage(msg_id);
+					sock = chat.getSocketFromUser(src);	
+					cout << "sock2 = " << sock << endl;
+					net_msg = hostToNetMsgSent(msg_id);
+					//notificating source user
+					if(send(sock, net_msg) < 0)
+					{
+						cout << "error sending message from " 
+							+ src + " to " + dst << ":" << endl;
+						perror("");
+					}
+				}
+			}
+		}
+		chat_mtx.unlock();	
+
+		this_thread::sleep_for(chrono::milliseconds(MSG_LOOP_TIME_MS));
+	}
+}
+
 int handle(int socket, const string& str, const User& user)
 {
 	char header;
-	bool ret;
 	string answer;
 	Message msg;
 
@@ -49,17 +105,34 @@ int handle(int socket, const string& str, const User& user)
 	{
 		case SEND_MSG:
 			msg = netToHostSendMsg(str);		
+			cout << "src | dst | content: " 
+				<< msg.getSrcUserName() << " | " 
+				<< msg.getDstUserName() << " | "
+				<< msg.getContent() << endl;
 			if(msg.getSrcUserName().empty())
 				answer = hostToNetMsg(INVALID_REQUEST_ERR);	
 			else
 			{
+				bool has_user, add_msg=true;
+
 				chat_mtx.lock();
-				ret = chat.addMessage(msg);
+				has_user = chat.hasUser(msg.getDstUserName());
+				cout << "has user? " << has_user << endl;
+				if(has_user)
+					add_msg = chat.addMessage(msg);
 				chat_mtx.unlock();
-				if(!ret)
-					answer = hostToNetMsg(MSG_EXISTS_ERR);
+
+				if(!has_user)
+					answer = hostToNetMsg(NO_MSG_DST_ERR);
+				else if(!add_msg)
+					answer = hostToNetMsg(MSG_EXISTS);
 				else
-					answer = hostToNetMsg(MSG_QUEUED);
+				{
+					size_t msg_id;
+					msg_id = hash<Message>{}(msg);
+					cout << msg_id << endl;
+					answer = hostToNetMsgQueued(msg_id);
+				}
 			}
 			break;
 
@@ -98,7 +171,7 @@ User registerUser(NetReceiver& receiver)
 
 	//trying to add user to chat
 	chat_mtx.lock();
-	ret = chat.addUser(User(user_name, src));
+	ret = chat.addUser(User(user_name, src), receiver.getSocket());
 	user = chat.getUser(user_name);
 	chat_mtx.unlock();
 
@@ -109,10 +182,13 @@ User registerUser(NetReceiver& receiver)
 			return User(hostToNetHeader(USER_EXISTS_ERR), NetAddr());
 		//user is getting online again
 		chat_mtx.lock();
+		chat.delUser(user_name);
+		user = User(user_name, src);
+		chat.addUser(user, receiver.getSocket());
 		chat.delUserFromGroup(user_name, OFFLINE_GROUP);
 		chat.addUserToGroup(user_name, ONLINE_GROUP);
 		chat_mtx.unlock();
-		return User(user_name, src);
+		return user;
 	}
 	else
 	{
@@ -254,11 +330,17 @@ void serverLoop()
 
 int main()
 {
+	thread msg_thread;
+
 	//creating first groups
 	chat.addGroup(ONLINE_GROUP);
 	chat.addGroup(OFFLINE_GROUP);
 
+	msg_thread = thread(messagesLoop);	
+
 	serverLoop();
+
+	msg_thread.join();
 
 	return 0;
 }

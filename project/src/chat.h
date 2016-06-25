@@ -13,7 +13,7 @@ class Chat
 {
 	private:
 	std::map<std::size_t, Message> messages;
-	std::vector<User> users;
+	std::map<int, User> users;
 	std::vector<Group> groups;
 
 	public:
@@ -26,7 +26,7 @@ class Chat
 	std::vector<std::string> getGroupsNames() const;
 
 	//users methods
-	bool addUser(const User& user);
+	bool addUser(const User& user, int socket=0);
 	bool delUser(const std::string& user_name);
 	bool hasUser(const std::string& user_name);
 	User getUser(const std::string& user_name) const throw(ElementNotFound);
@@ -35,6 +35,7 @@ class Chat
 		const std::string& group_name);
 	bool delUserFromGroup(const std::string& user_name, 
 		const std::string& group_name);
+	int getSocketFromUser(const std::string& user_name);
 
 	//messages methods
 	bool addMessage(const Message& msg);

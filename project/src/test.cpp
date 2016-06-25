@@ -13,9 +13,11 @@
 
 using namespace std;
 
+int users = 0;
+
 inline void addUserCheck(Chat& chat, const string& name)
 {
-	if(!chat.addUser(User(name, NetAddr())))
+	if(!chat.addUser(User(name, NetAddr()), users++))
 		cout << "user '" << name << "' could not be added to chat" << endl;
 	else
 		cout << "user '" << name << "' added to chat" << endl;
@@ -75,7 +77,7 @@ void chatTest()
 	addGroupCheck(chat, "gostosos");
 
 	Message msg1 = Message("", "", "");
-	Message msg2 = Message("", "", "");
+	Message msg2 = Message("w", "", "");
 	addMessageCheck(chat, msg1);
 	addMessageCheck(chat, msg1);
 	addMessageCheck(chat, msg2);

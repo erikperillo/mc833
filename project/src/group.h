@@ -11,6 +11,7 @@ class Group
 	std::vector<std::string> users_names;
 
 	public:
+	Group();
 	Group(const std::string& name);
 	bool addUser(const std::string& user_name);
 	bool delUser(const std::string& user_name);
