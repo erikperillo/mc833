@@ -2,15 +2,17 @@
 #define __CHAT_HEADER__
 
 #include <vector>
+#include <map>
 #include "group.h"
 #include "message.h"
 #include "user.h"
+#include "hash.h"
 #include "elementnotfound.h"
 
 class Chat
 {
 	private:
-	std::vector<Message> messages;
+	std::map<std::size_t, Message> messages;
 	std::vector<User> users;
 	std::vector<Group> groups;
 
@@ -22,6 +24,7 @@ class Chat
 	bool hasGroup(const std::string& group_name);
 	Group getGroup(const std::string& group_name) const throw(ElementNotFound);
 	std::vector<std::string> getGroupsNames() const;
+
 	//users methods
 	bool addUser(const User& user);
 	bool delUser(const std::string& user_name);
@@ -32,13 +35,13 @@ class Chat
 		const std::string& group_name);
 	bool delUserFromGroup(const std::string& user_name, 
 		const std::string& group_name);
+
 	//messages methods
 	bool addMessage(const Message& msg);
-	bool delMessage(const unsigned long& msg_id);
-	bool hasMessage(const unsigned long& msg_id);
-	Message getMessage(const unsigned long& msg_id) const 
-		throw(ElementNotFound);
-	std::vector<unsigned long> getMessagesIds() const;
+	bool delMessage(const std::size_t& msg_id);
+	bool hasMessage(const std::size_t& msg_id);
+	Message getMessage(const std::size_t& msg_id) const throw(ElementNotFound);
+	std::vector<std::size_t> getMessagesIds() const;
 };
 
 #endif

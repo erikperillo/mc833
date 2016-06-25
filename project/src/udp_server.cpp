@@ -1,5 +1,4 @@
 #include <iostream>
-#include <chrono>
 #include <thread>
 #include <mutex>
 #include <string>
@@ -15,7 +14,7 @@ using namespace std;
 #define OFFLINE_GROUP "offline"
 #define SERVER_NAME "127.0.0.1"
 #define SERVER_PORT 13254
-#define MAX_NUM_THREADS 3
+#define MAX_NUM_THREADS 1
 
 //mutexes
 std::mutex free_thread_mtx;
@@ -35,7 +34,7 @@ vector<string> preProcess(const std::string& raw_msg)
 {
 	return split(raw_msg, " ");
 }
-int m_count = 0;
+
 int handle(int socket, const string& str, const User& user)
 {
 	vector<string> tokens;
@@ -97,6 +96,8 @@ int handle(int socket, const string& str, const User& user)
 
 	if(send(socket, answer) < 0)
 		error("send");	
+	if(send(socket, "hur brbrb\n") < 0)
+		error("send");	
 
 	return 0;
 }
@@ -155,38 +156,45 @@ Interacts with each client, providing necessary services
 void userInteraction(int id, int sock, NetAddr src)
 {
 	NetMessage msg;
-	string answer;
+	string answer = OK;
+	//string answer;
 	User user;
 
 	//registering user
-	user = registerUser(sock);
+	/*user = registerUser(sock);
 	if(user.getName() == USER_EXISTS_ERR || user.getName() == INVALID_CMD_ERR)
 		answer = user.getName();
 	else
 		answer = OK;
 	if(send(sock, answer) < 0)
-		error("send");	
+		error("send");	*/
 
 	//main loop
 	if(answer == OK)
 	{
 		while(true)
 		{
-			cout << "end" << endl << flush;
 			//receiving message from client
-			msg = recv(sock);
+			msg = recvFrom(sock);
 			if(msg.getErrCode() < 0)
 				error("recv");	
 			if(msg.getErrCode() == 0)
 				break;
+			cout << "boss" << endl;
 
 			//displaying message
 			cout << "[" << id << "]"
 				<< "[" << src.getIp() << ":" << src.getPort() << "]"
 				<< " " << msg.getContent() << endl;
 
+			if(sendTo(sock, msg.getSrcAddr(), msg.getContent()) < 0)
+				error("sendTo");
+			if(sendTo(sock, msg.getSrcAddr(), "ey b0ss") < 0)
+				error("sendTo");
+			if(sendTo(sock, msg.getSrcAddr(), "edjfh") < 0)
+				error("sendTo");
 			//handling request
-			handle(sock, msg.getContent(), user);
+			//handle(sock, msg.getContent(), user);
 		}	
 
 		//unregistering user
@@ -226,25 +234,27 @@ void serverLoop()
 		error("addr");	
 
 	//getting socket for TCP connection
-	sock = getSocket(SOCK_STREAM);	
+	sock = getSocket(SOCK_DGRAM);	
 	if(sock < 0)
 		error("getSocket");
 	
 	//binding and listening for incoming connections
 	if(bind(sock, addr) < 0)
 		error("bind");
-	if(listen(sock, MAX_NUM_THREADS) < 0)
-		error("listen");
+	//if(listen(sock, MAX_NUM_THREADS) < 0)
+	//	error("listen");
 
 	cout << "started server" << endl;
 	//main loop
 	while(true)
 	{
 		//getting new connection
+		/*
 		conn = accept(sock);	
 		conn_sock = conn.getErrCode();
 		if(conn_sock < 0)
 			error("accept");
+		*/
 
 		free_thread_mtx.lock();
 		for(i=0; i<MAX_NUM_THREADS && !free_thread[i]; i++);
@@ -254,13 +264,11 @@ void serverLoop()
 			if(threads[i].joinable())
 				threads[i].join();
 
-			cout << "<new connection on " 
-				<< conn.getIp() << ":" << conn.getPort() << ">" << endl;
+			//cout << "<new connection on " 
+			//	<< conn.getIp() << ":" << conn.getPort() << ">" << endl;
 			
-			free_thread_mtx.lock();
 			free_thread[i] = false;	
-			free_thread_mtx.unlock();
-			threads[i] = std::thread(userInteraction, i, conn_sock, conn);
+			threads[i] = std::thread(userInteraction, i, sock, conn);
 		}
 	}
 
@@ -274,18 +282,6 @@ int main()
 	//creating first groups
 	chat.addGroup(ONLINE_GROUP);
 	chat.addGroup(OFFLINE_GROUP);
-
-	stringstream ss;
-	ChatView view(chat, ss);
-
-	view.printGroups();
-	cout << ss.str();
-
-	ss.str(string());
-	view.printUsersFromGroup(ONLINE_GROUP);
-	view.printUsersFromGroup(OFFLINE_GROUP, false);
-	cout << ss.str();
-	return 0;
 
 	serverLoop();
 

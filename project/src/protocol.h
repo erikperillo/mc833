@@ -30,7 +30,12 @@ enum messages: char
 #define HELP_CMD "help"
 #define HELP "help"
 #define OK "ok"
-#define INVALID_COMMAND_ERR "invcom"
+#define MSG_QUEUED "msgqueued"
+#define INVALID_CMD_ERR "invcom"
+#define USER_EXISTS_ERR "userexists"
+#define NO_SRC_USER_ERR "nosrcusr"
+#define NO_DST_USER_ERR "nodstusr"
+#define MSG_EXISTS_ERR "msgexists"
 
 /*
 class ProtocolFormatError

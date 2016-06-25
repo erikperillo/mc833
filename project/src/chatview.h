@@ -26,7 +26,7 @@ class ChatView
 	ChatView(Chat& model, std::ostream& out=std::cout);
 	void printUsers(const std::string& title="users");
 	void printGroups(const std::string& title="groups");
-	bool printUsersFromGroup(const std::string& group_name);
+	bool printUsersFromGroup(const std::string& group_name, bool header=true);
 };
 
 #endif

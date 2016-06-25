@@ -68,7 +68,7 @@ void ChatView::printTable(const std::vector<std::vector<std::string>>& cols,
 	for(unsigned i=0; i<cols[0].size(); i++)
 	{
 		for(auto c: cols)
-			std::cout << this->col(c[i]);
+			this->out << this->col(c[i]);
 		this->out << std::endl;
 	}
 	this->out << this->sep(cols.size()) << std::endl;
@@ -92,10 +92,12 @@ void ChatView::printGroups(const std::string& title)
 	this->printTable(this->model.getGroupsNames(), title);
 }
 
-bool ChatView::printUsersFromGroup(const std::string& group_name)
+bool ChatView::printUsersFromGroup(const std::string& group_name, bool header)
 {
 	if(!this->model.hasGroup(group_name))
 		return false;
+
+	std::vector<std::string> hdr;
 
 	//formatting
 	Group group = this->model.getGroup(group_name);
@@ -108,9 +110,13 @@ bool ChatView::printUsersFromGroup(const std::string& group_name)
 	table.push_back(users_names);
 	table.push_back(groups_names);
 	//creating header
-	std::vector<std::string> header = {"users", "group"};
+	if(header)
+	{
+		hdr.push_back("user");
+		hdr.push_back("group");
+	}
 	//printing table
-	this->printTable(table, header);
+	this->printTable(table, hdr);
 
 	return true;
 }

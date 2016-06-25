@@ -130,51 +130,45 @@ bool Chat::delUserFromGroup(const std::string& user_name,
 
 bool Chat::addMessage(const Message& msg)
 {
-	for(auto const& m: this->messages)
-		if(m.getId() == msg.getId())
-			return false;
+	std::size_t msg_id = std::hash<Message>{}(msg);
+	auto it = this->messages.find(msg_id);
 
-	this->messages.push_back(msg);
+	if(it != this->messages.end())
+		return false;
+
+	this->messages[msg_id] = msg;
+
 	return true;
 }
 
-bool Chat::delMessage(const unsigned long& msg_id)
+bool Chat::delMessage(const std::size_t& msg_id)
 {
-	for(unsigned i=0; i<this->messages.size(); i++)
-		if(this->messages[i].getId() == msg_id)
-		{
-			this->messages.erase(this->messages.begin() + i);
-			return true;
-		}
+	auto it = this->messages.find(msg_id);
 
-	return false;
+	if(it == this->messages.end())
+		return false;
+
+	this->messages.erase(msg_id);
+
+	return true;
 }
 
-bool Chat::hasMessage(const unsigned long& msg_id)
+bool Chat::hasMessage(const std::size_t& msg_id)
 {
-	for(auto const& m: this->messages)
-		if(m.getId() == msg_id)
-			return true;
-
-	return false;
+	return this->messages.find(msg_id) != this->messages.end();
 }
 
-Message Chat::getMessage(const unsigned long& msg_id) const throw(ElementNotFound)
+Message Chat::getMessage(const std::size_t& msg_id) const throw(ElementNotFound)
 {
-	for(auto const& m: this->messages)
-		if(m.getId() == msg_id)
-			return m;
-
-	throw ElementNotFound("message #" + std::to_string(msg_id) + \
-		" could not be found");
+	return this->messages.find(msg_id)->second;
 }
 
-std::vector<unsigned long> Chat::getMessagesIds() const
+std::vector<std::size_t> Chat::getMessagesIds() const
 {
-	std::vector<unsigned long> ids;
+	std::vector<std::size_t> ids;
 
 	for(auto it = this->messages.begin(); it != this->messages.end(); it++)
-		ids.push_back(it->getId());
+		ids.push_back(it->first);
 
 	return ids;
 }

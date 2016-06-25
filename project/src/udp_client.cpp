@@ -1,7 +1,6 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
-#include <chrono>
 #include <string>
 #include "net.h"
 #include "protocol.h"
@@ -70,26 +69,7 @@ int handle(int socket, const string& answer, const string& prompt="[server] ")
 	return 0;
 }
 
-vector<string> dis(char* buf, int size)
-{
-	vector<string> tokens;
-	string tok;
-
-	for(int i=0; i<size; i++)
-	{
-		if(buf[i] == '\0')
-		{
-			tokens.push_back(tok);
-			tok.clear();
-		}
-		else
-			tok.push_back(buf[i]);
-	}
-
-	return tokens;
-}
-
-void observe(int sock, const string& prompt)
+void observe(int sock)
 {
 	NetAddr src;
 	NetMessage msg;
@@ -105,14 +85,13 @@ void observe(int sock, const string& prompt)
 
 		//displaying server response
 		src = msg.getSrcAddr();
-		cout << endl << "[" << src.getIp() << ":" << src.getPort() << "]"
+		cout << "[" << src.getIp() << ":" << src.getPort() << "]"
 			<< " " << msg.getContent() << endl;
 
 		//handling answer
-		for(auto const& str: split(msg.getContent(), string(1, NET_SEP)))
-			handle(sock, str);
+		handle(sock, msg.getContent());
 
-		cout << prompt << flush;
+		cout << "$[" + string("erik") + "] " << flush;
 	}
 }
 
@@ -125,15 +104,12 @@ void client(string& ip, unsigned short port, string& name)
 	NetAddr src;
 	string cmd;
 	string str;
-	string prompt;
 	thread thr;
 	
-	prompt = "$[" + name + "] ";
-
 	if(server.getErrCode() < 0)
 		error("NetAddr");
 
-	sock = getSocket(SOCK_STREAM);	
+	sock = getSocket(SOCK_DGRAM);	
 	if(sock < 0)
 		error("getSocket");
 
@@ -156,14 +132,16 @@ void client(string& ip, unsigned short port, string& name)
 	if(handle(sock, msg.getContent()) < 0)
 		return;
 
-	thr = thread(observe, sock, prompt);
+	thr = thread(observe, sock);
 
 	while(true)
 	{
 		//getting command from console
-		cout << prompt << flush;
+		cout << "$[" + name + "] " << flush;
 		getline(cin, cmd);
 
+		//converting command to message to be sent via net
+		//str = cmdToNetMsg(cmd);
 		str = cmd;
 		//sending message
 		ret = send(sock, str);

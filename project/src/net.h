@@ -11,6 +11,7 @@
 
 #define SUCCESS 1
 #define MAX_BUF_LEN 4096
+#define NET_SEP ':'
 
 enum net_err: signed int
 {
@@ -43,11 +44,14 @@ class NetMessage
 	NetAddr src;
 	NetAddr dst;	
 	std::string content;
+	void setContent(char* buf, size_t size);
 
 	public:
 	NetMessage();
 	NetMessage(const NetAddr& src, const NetAddr& dst, 
 		const std::string& content);	
+	NetMessage(const NetAddr& src, const NetAddr& dst, 
+		char* buf, size_t buf_size);
 	NetAddr getSrcAddr() const;
 	NetAddr getDstAddr() const;
 	std::string getContent() const;
@@ -67,6 +71,7 @@ int sendTo(int socket, const NetAddr& dst, const std::string& msg, int flags=0);
 int sendTo(int socket, const NetMessage& msg, int flags=0);
 int send(int socket, const std::string& msg, int flags=0);
 int send(int socket, const NetMessage& msg, int flags=0);
+int setBlocking(int socket, bool blocking);
 
 NetMessage recvFrom(int socket, int flags=0);
 NetMessage recv(int socket, int flags=0);

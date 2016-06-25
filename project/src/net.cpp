@@ -1,5 +1,6 @@
 #include "net.h"
 #include <cstring>
+#include <fcntl.h>
 
 NetAddr::NetAddr()
 {
@@ -74,6 +75,21 @@ NetMessage::NetMessage(const NetAddr& src, const NetAddr& dst,
 	this->src = src;
 	this->dst = dst;
 	this->content = content;
+}
+
+NetMessage::NetMessage(const NetAddr& src, const NetAddr& dst, 
+	char* buf, size_t buf_size)
+{
+	this->src = src;
+	this->dst = dst;
+	this->setContent(buf, buf_size);
+}
+
+void NetMessage::setContent(char* buf, size_t size)
+{
+	this->content.clear();
+	for(unsigned i=0; i<size-1; i++)
+		this->content.push_back((buf[i] == '\0')?NET_SEP:buf[i]);
 }
 
 NetAddr NetMessage::getSrcAddr() const
@@ -179,6 +195,16 @@ int send(int socket, const NetMessage& msg, int flags)
 	return send(socket, msg.getContent(), flags);
 }
 
+int setBlocking(int socket, bool blocking)
+{
+	int flags;
+	flags = fcntl(socket, F_GETFL, 0);
+	if(flags < 0) 
+		return flags;
+	flags = blocking?(flags&~O_NONBLOCK):(flags|O_NONBLOCK);
+	return (fcntl(socket, F_SETFL, flags) == 0)?true:false;
+}
+
 NetMessage recvFrom(int socket, int flags)
 {
 	int ret;
@@ -193,7 +219,10 @@ NetMessage recvFrom(int socket, int flags)
 		(struct sockaddr*)&src, &src_len);
 
 	getsockname(socket, (struct sockaddr*)&dst, &dst_len);
-	msg = NetMessage(NetAddr(src), NetAddr(dst), std::string(buf));	
+	if(ret < 0)
+		msg = NetMessage(NetAddr(src), NetAddr(dst), std::string());	
+	else
+		msg = NetMessage(NetAddr(src), NetAddr(dst), buf, (size_t)ret);
 	msg.setErrCode(ret);
 
 	return msg;
@@ -213,7 +242,10 @@ NetMessage recv(int socket, int flags)
 
 	getpeername(socket, (struct sockaddr*)&src, &src_len);
 	getsockname(socket, (struct sockaddr*)&dst, &dst_len);
-	msg = NetMessage(NetAddr(src), NetAddr(dst), std::string(buf));	
+	if(ret <= 0)
+		msg = NetMessage(NetAddr(src), NetAddr(dst), std::string());	
+	else
+		msg = NetMessage(NetAddr(src), NetAddr(dst), buf, (size_t)ret);
 	msg.setErrCode(ret);
 
 	return msg;

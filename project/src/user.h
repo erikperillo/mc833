@@ -2,19 +2,19 @@
 #define __USER_HEADER__
 
 #include <string>
+#include "net.h"
 
 class User
 {
 	private:
 	std::string name;
-	std::string ip;
-	int port;
+	NetAddr addr;
 
 	public:
-	User(const std::string& name, const std::string& ip, int port);
+	User();
+	User(const std::string& name, const NetAddr& addr);
 	std::string getName() const;
-	int getPort() const;
-	std::string getIp() const;
+	NetAddr getAddr() const;
 };
 
 #endif
