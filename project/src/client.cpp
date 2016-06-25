@@ -4,6 +4,7 @@
 #include <mutex>
 #include <chrono>
 #include <string>
+#include "hash.h"
 #include "net.h"
 #include "protocol.h"
 
@@ -15,12 +16,11 @@ using namespace std;
 
 #define REGISTER_CMD "register" 
 #define EXIT_CMD "exit"
+#define CREATE_GROUP_CMD "createg"
 #define JOIN_GROUP_CMD "joing"
+#define SEND_GROUP_CMD "sendg"
 #define SEND_MSG_CMD "sendmsg"
 #define HELP_CMD "help"
-#define INVALID_CMD_ERR "invcom"
-#define NO_SRC_USER_ERR "nosrcusr"
-#define NO_DST_USER_ERR "nodstusr"
 
 vector<size_t> messages_ids;
 std::mutex messages_ids_mtx;
@@ -47,6 +47,18 @@ void displayHelpMessage(const string& prompt="\t")
 	info(string(EXIT_CMD) + " -> exits chat", prompt);
 }
 
+string trim(const string& str)
+{
+    size_t first, last;
+
+	first = str.find_first_not_of(' ');
+    if(first == string::npos)
+        return "";
+    last  = str.find_last_not_of(' ');
+
+    return str.substr(first, last - first + 1);
+}
+
 string lower(const string& str)
 {
 	string res(str);
@@ -56,18 +68,6 @@ string lower(const string& str)
 			res[i] = res[i] - ('Z' - 'z');
 
     return res;
-}
-
-string cmdToNetMsg(const string& cmd)
-{
-	vector<string> tokens;
-	string msg(FIELD_SEP);
-
-	tokens = split(cmd, " ");
-	for(auto const& tok: tokens)
-		msg += sanitize(tok) + FIELD_SEP;
-
-	return msg;
 }
 
 int handle(const string& answer, const string& prompt="[server] ")
@@ -81,9 +81,6 @@ int handle(const string& answer, const string& prompt="[server] ")
 	{
 		case OK:
 			info("OK", prompt);
-			break;
-		case INVALID_REQUEST_ERR:
-			info("ERROR: invalid request", prompt);
 			break;
 		case MSG_QUEUED:
 		{
@@ -116,6 +113,30 @@ int handle(const string& answer, const string& prompt="[server] ")
 		}
 		case MSG_EXISTS:
 			info("message already queued to be sent", prompt);
+			break;
+		case GROUP_EXISTS:
+			info("group already exists", prompt);
+			break;
+		case USER_ALREADY_IN_GROUP:
+			info("user already in group", prompt);
+			break;
+		case USER_ADDED_TO_GROUP:
+			info("user successfully added to group", prompt);
+			break;
+		case GROUP_CREATED:
+			info("group created successfully", prompt);
+			break;
+		case NO_GROUP_ERR:
+			info("ERROR: group does not exist", prompt);
+			ret = -1;
+			break;
+		case INVALID_REQUEST_ERR:
+			info("ERROR: invalid request", prompt);
+			ret = -1;
+			break;
+		case NOT_IN_GROUP_ERR:
+			info("ERROR: user does not belong to group", prompt);
+			ret = -1;
 			break;
 		case NO_MSG_DST_ERR:
 			info("ERROR: destiny user does not exist", prompt);
@@ -152,8 +173,8 @@ void observe(int sock, string prompt)
 
 		//displaying server response
 		src = msg.getSrcAddr();
-		cout << "[" << src.getIp() << ":" << src.getPort() << "]"
-			<< " " << msg.getContent() << endl;
+		//cout << "[" << src.getIp() << ":" << src.getPort() << "]"
+		//	<< " " << msg.getContent() << endl;
 
 		//handling answer
 		//for(auto const& str: split(msg.getContent(), string(1, NET_SEP)))
@@ -212,6 +233,8 @@ string cmdToNetMsg(const string& cmd, const string& user_name)
 			arg_2 = tokens[1];
 			if(arg_1 == JOIN_GROUP_CMD)
 				str = hostToNetJoinGroup(arg_2);
+			if(arg_1 == CREATE_GROUP_CMD)
+				str = hostToNetCreateGroup(arg_2);
 			break;
 
 		//number of args >= 3
@@ -221,7 +244,20 @@ string cmdToNetMsg(const string& cmd, const string& user_name)
 			if(arg_1 == SEND_MSG_CMD)
 			{
 				arg_3 = join(tokens, " ", 2);
-				str = hostToNetSendMsg(user_name, arg_2, arg_3);
+				Message msg = Message(user_name, arg_2, arg_3);
+				size_t msg_id = hash<Message>{}(msg);
+				str = hostToNetSendMsg(msg);
+				info("message #" + to_string(msg_id).substr(0, HASH_CUT)
+					+ " to be sent!");
+			}
+			if(arg_1 == SEND_GROUP_CMD)
+			{
+				arg_3 = join(tokens, " ", 2);
+				Message msg = Message(user_name, arg_2, arg_3);
+				str = hostToNetSendGroup(arg_2, arg_3);
+				size_t msg_id = hash<Message>{}(msg);
+				info("message #" + to_string(msg_id).substr(0, HASH_CUT)
+					+ " to be sent!");
 			}
 			break;
 	}
@@ -287,6 +323,9 @@ void client(string& ip, unsigned short port, string& name)
 		if(ret < 0)
 			error("error sending message to server");	
 		if(ret == 0)
+			break;
+
+		if(lower(trim(cmd)) == EXIT_CMD)
 			break;
 	}
 

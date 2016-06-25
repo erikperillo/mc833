@@ -11,7 +11,7 @@ enum err: signed int
 	USER_NOT_FOUND = std::numeric_limits<int>::min(),
 	GROUP_NOT_FOUND,
 	USER_EXISTS,
-	GROUP_EXISTS,
+	//GROUP_EXISTS,
 	MESSAGE_NOT_FOUND,
 	MESSAGE_EXISTS
 };

@@ -1,5 +1,6 @@
 #include "chatcontroller.h"
 
+/*
 ChatController::ChatController(Chat& model, ChatView& view): 
 	model(model), view(view)
 {;}
@@ -35,4 +36,4 @@ int ChatController::queueMessage(const Message& msg)
 
 	return SUCCESS;
 }
-
+*/

@@ -15,8 +15,8 @@ using namespace std;
 #define OFFLINE_GROUP "offline"
 #define SERVER_NAME "127.0.0.1"
 #define SERVER_PORT 13254
-#define MSG_LOOP_TIME_MS 2000
-#define MAX_NUM_THREADS 3
+#define MSG_LOOP_TIME_MS 1618
+#define MAX_NUM_THREADS 4
 
 //mutexes
 std::mutex free_thread_mtx;
@@ -25,6 +25,8 @@ std::mutex chat_mtx;
 bool free_thread[MAX_NUM_THREADS];
 //chat
 Chat chat;
+stringstream ss;
+ChatView chat_view(chat, ss);
 
 void error(const std::string& msg, int ret=1)
 {
@@ -62,7 +64,7 @@ void messagesLoop()
 			{
 				sock = chat.getSocketFromUser(dst);	
 				net_msg = hostToNetMsgIncoming(msg);
-				cout << "sock1 = " << sock << endl;
+				//cout << "sock1 = " << sock << endl;
 				//sending message to destiny user
 				if(send(sock, net_msg) < 0)
 				{
@@ -75,7 +77,7 @@ void messagesLoop()
 					msg_id = hash<Message>{}(msg);
 					chat.delMessage(msg_id);
 					sock = chat.getSocketFromUser(src);	
-					cout << "sock2 = " << sock << endl;
+					//cout << "sock2 = " << sock << endl;
 					net_msg = hostToNetMsgSent(msg_id);
 					//notificating source user
 					if(send(sock, net_msg) < 0)
@@ -97,45 +99,145 @@ int handle(int socket, const string& str, const User& user)
 {
 	char header;
 	string answer;
-	Message msg;
+	int ret = 0;
 
 	header = netToHostHeader(str);
 
 	switch(header)
 	{
+		case EXIT:
+		{
+			cout << "exit" << endl;
+			answer = hostToNetMsg(OK);
+			ret = -1;
+			break;
+		}
 		case SEND_MSG:
-			msg = netToHostSendMsg(str);		
-			cout << "src | dst | content: " 
+		{
+			Message msg = netToHostSendMsg(str);		
+			/*cout << "src | dst | content: " 
 				<< msg.getSrcUserName() << " | " 
 				<< msg.getDstUserName() << " | "
-				<< msg.getContent() << endl;
+				<< msg.getContent() << endl;*/
 			if(msg.getSrcUserName().empty())
+			{
 				answer = hostToNetMsg(INVALID_REQUEST_ERR);	
+				break;
+			}
+
+			bool has_user, add_msg=true;
+
+			chat_mtx.lock();
+			has_user = chat.hasUser(msg.getDstUserName());
+			if(has_user)
+				add_msg = chat.addMessage(msg);
+			chat_mtx.unlock();
+
+			if(!has_user)
+				answer = hostToNetMsg(NO_MSG_DST_ERR);
+			else if(!add_msg)
+				answer = hostToNetMsg(MSG_EXISTS);
 			else
 			{
-				bool has_user, add_msg=true;
+				size_t msg_id;
+				msg_id = hash<Message>{}(msg);
+				//cout << msg_id << endl;
+				answer = hostToNetMsgQueued(msg_id);
+			}
+			break;
+		}
+		case CREATE_GROUP:
+		{
+			string group_name = netToHostCreateGroup(str);
+			if(group_name.empty())
+			{
+				answer = hostToNetMsg(INVALID_REQUEST_ERR);
+				break;
+			}
+			bool has_group;
+			chat_mtx.lock();
+			has_group = chat.hasGroup(group_name);
+			chat.addGroup(group_name);
+			chat_mtx.unlock();
 
-				chat_mtx.lock();
-				has_user = chat.hasUser(msg.getDstUserName());
-				cout << "has user? " << has_user << endl;
-				if(has_user)
-					add_msg = chat.addMessage(msg);
-				chat_mtx.unlock();
+			if(has_group)
+				answer = hostToNetMsg(GROUP_EXISTS);
+			else
+				answer = hostToNetMsg(GROUP_CREATED);	
+			break;
+		}	
+		case JOIN_GROUP:
+		{
+			string group_name = netToHostJoinGroup(str);
+			if(group_name.empty())
+			{
+				answer = hostToNetMsg(INVALID_REQUEST_ERR);
+				break;
+			}
 
-				if(!has_user)
-					answer = hostToNetMsg(NO_MSG_DST_ERR);
-				else if(!add_msg)
-					answer = hostToNetMsg(MSG_EXISTS);
+			bool has_group, add_user;
+			chat_mtx.lock();
+			has_group = chat.hasGroup(group_name);
+			add_user = chat.addUserToGroup(user.getName(), group_name);
+			chat_mtx.unlock();
+
+			if(!has_group)
+				answer = hostToNetMsg(NO_GROUP_ERR);	
+			else if(!add_user)
+				answer = hostToNetMsg(USER_ALREADY_IN_GROUP);	
+			else
+				answer = hostToNetMsg(USER_ADDED_TO_GROUP);
+			break;
+		}
+		case SEND_GROUP:
+		{
+			pair<string, string> group_msg = netToHostSendGroup(str);	
+			if(group_msg.first.empty())
+			{
+				answer = hostToNetMsg(INVALID_REQUEST_ERR);
+				break;
+			}
+
+			Group group;
+			bool in_group, has_group;
+			string user_name = user.getName();
+			string group_name = group_msg.first;
+			string group_msg_c = group_msg.second;
+
+			chat_mtx.lock();
+			has_group = chat.hasGroup(group_name);
+			if(has_group)
+			{
+				group = chat.getGroup(group_name);
+				in_group = group.has(user_name);
+				if(in_group)
+					for(auto const& name: group.getUsersNames())
+						if(name != user_name)
+						{
+							Message msg = Message(user_name, name, group_msg_c);
+							chat.addMessage(msg);
+						}
+			}
+			chat_mtx.unlock();
+
+			if(has_group)
+			{
+				if(!in_group)
+					answer = hostToNetMsg(NOT_IN_GROUP_ERR);
 				else
 				{
 					size_t msg_id;
+					Message msg = Message(user_name, group_name, group_msg_c);
 					msg_id = hash<Message>{}(msg);
-					cout << msg_id << endl;
+					//cout << msg_id << endl;
 					answer = hostToNetMsgQueued(msg_id);
 				}
 			}
-			break;
+			else
+				answer = hostToNetMsg(NO_GROUP_ERR);
 
+			break;
+		}
 		default:
 			answer = hostToNetMsg(INVALID_REQUEST_ERR);
 			break;
@@ -144,7 +246,7 @@ int handle(int socket, const string& str, const User& user)
 	if(send(socket, answer) < 0)
 		error("send");
 
-	return 0;
+	return ret;
 }
 
 User registerUser(NetReceiver& receiver)
@@ -245,7 +347,8 @@ void userInteraction(int id, int sock)
 				<< " " << msg.getContent() << endl;
 
 			//handling request
-			handle(sock, msg.getContent(), user);
+			if(handle(sock, msg.getContent(), user) < 0)
+				break;
 		}	
 
 		//unregistering user

@@ -17,7 +17,13 @@
 enum messages: char
 {
 	SEND_MSG,
+	CREATE_GROUP,
 	JOIN_GROUP,
+	GROUP_EXISTS,
+	SEND_GROUP,
+	GROUP_CREATED,
+	USER_ADDED_TO_GROUP,
+	USER_ALREADY_IN_GROUP,
 	UNDEFINED,
 	OK,
 	HELP,
@@ -28,6 +34,8 @@ enum messages: char
 	MSG_EXISTS,
 	MSG_INCOMING,
 	INVALID_REQUEST_ERR,
+	NOT_IN_GROUP_ERR,
+	NO_GROUP_ERR,
 	NO_MSG_DST_ERR,
 	USER_EXISTS_ERR
 };
@@ -83,5 +91,12 @@ std::size_t netToHostMsgSent(const std::string msg, int to_cut=-1);
 
 std::string hostToNetMsgIncoming(const Message& msg);
 Message netToHostMsgIncoming(const std::string& msg);
+
+std::string hostToNetCreateGroup(const std::string& name);
+std::string netToHostCreateGroup(const std::string& msg);
+
+std::string hostToNetSendGroup(const std::string& group_name, 
+	const std::string& msg);
+std::pair<std::string, std::string> netToHostSendGroup(const std::string& msg);
 
 #endif

@@ -225,3 +225,36 @@ Message netToHostMsgIncoming(const std::string& msg)
 
 	return Message(args[0], args[1], args[2]);
 }
+
+std::string hostToNetCreateGroup(const std::string& name)
+{
+	return hostToNetMsg(CREATE_GROUP, {name});
+}
+
+std::string netToHostCreateGroup(const std::string& msg)
+{
+	std::vector<std::string> args;
+
+	args = netToHostMsg(msg);
+	if(args.size() < 1)
+		return "";
+
+	return args[0];
+}
+
+std::string hostToNetSendGroup(const std::string& group_name, 
+	const std::string& msg)
+{
+	return hostToNetMsg(SEND_GROUP, {group_name, msg});
+}
+
+std::pair<std::string, std::string> netToHostSendGroup(const std::string& msg)
+{
+	std::vector<std::string> args;
+
+	args = netToHostMsg(msg);
+	if(args.size() < 2)
+		return std::pair<std::string, std::string>("", "");
+
+	return std::pair<std::string, std::string>(args[0], args[1]);
+}
