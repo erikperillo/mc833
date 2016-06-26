@@ -95,7 +95,21 @@ std::string hostToNetHeader(char message)
 
 char netToHostHeader(const std::string& str)
 {
-	return (str.size() > 0)?str[0]:UNDEFINED;
+	std::vector<std::string> tokens;	
+
+	tokens = split(str, FIELD_SEP);
+	if(tokens.size() < 1)
+		return UNDEFINED;
+
+	switch(tokens[0].size())
+	{
+		case 1:
+			return tokens[0][0];
+		case 2:
+			return tokens[0][1];
+		default:
+			return UNDEFINED;
+	}
 }
 
 std::string hostToNetMsg(char message)

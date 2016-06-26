@@ -46,6 +46,19 @@ string pwd()
   return string(path, (size>0)?size:0);
 }
 
+string filterZeros(const string& str)
+{
+	string ret;
+
+	if(str.empty())
+		return ret;
+	for(unsigned i=0; i<str.size()-1; i++)
+		if(str[i] != '\0')
+			ret.push_back(str[i]);
+
+	return ret;
+}
+
 void displayHelpMessage(const string& prompt="\t")
 {
 	info("commands:");

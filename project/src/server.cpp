@@ -108,15 +108,12 @@ int handle(int socket, const string& str, const User& user)
 	string answer;
 	int ret = 0;
 
-	cout << "header:" << endl;
 	header = netToHostHeader(str);
-	cout << "survived header" << endl;
 
 	switch(header)
 	{
 		case EXIT:
 		{
-			cout << "exit" << endl;
 			answer = hostToNetMsg(OK);
 			ret = -1;
 			break;
@@ -157,10 +154,7 @@ int handle(int socket, const string& str, const User& user)
 		}
 		case SEND_FILE:
 		{
-			cout << "send file" << endl;
-			cout << "net2host" << endl;
 			Message msg = netToHostSendFile(str);		
-			cout << "survived net2host" << endl;
 			/*cout << "src | dst | content: " 
 				<< msg.getSrcUserName() << " | " 
 				<< msg.getDstUserName() << " | "
@@ -190,7 +184,6 @@ int handle(int socket, const string& str, const User& user)
 				//cout << msg_id << endl;
 				answer = hostToNetFileQueued(msg_id);
 			}
-			cout << "survived send file" << endl;
 			break;
 		}
 		case CREATE_GROUP:
@@ -381,13 +374,11 @@ void userInteraction(int id, int sock)
 		while(true)
 		{
 			//receiving message from client
-			cout << "recv..." << endl;
 			msg = receiver.recv();
 			if(msg.getErrCode() < 0)
 				error("recv");	
 			if(msg.getErrCode() == 0)
 				break;
-			cout << "survived recv..." << endl;
 
 			//displaying message
 			src = msg.getSrcAddr();
