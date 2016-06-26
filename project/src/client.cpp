@@ -13,6 +13,7 @@ using namespace std;
 #define SERVER_NAME "127.0.0.1"
 #define SERVER_PORT 7532
 #define HASH_CUT 6
+#define MAX_BUF 2048
 
 #define REGISTER_CMD "register" 
 #define EXIT_CMD "exit"
@@ -20,6 +21,7 @@ using namespace std;
 #define JOIN_GROUP_CMD "joing"
 #define SEND_GROUP_CMD "sendg"
 #define SEND_MSG_CMD "sendmsg"
+#define SEND_FILE_CMD "sendf"
 #define HELP_CMD "help"
 
 vector<size_t> messages_ids;
@@ -34,6 +36,14 @@ void error(const string& msg, int ret=1)
 void info(const string& msg, const string& prompt="[chat] ")
 {
 	cout << prompt << msg << endl;
+}
+
+string pwd()
+{
+  char path[MAX_BUF];
+  ssize_t size = readlink("/proc/self/exe", path, MAX_BUF);
+
+  return string(path, (size>0)?size:0);
 }
 
 void displayHelpMessage(const string& prompt="\t")
@@ -109,6 +119,49 @@ int handle(const string& answer, const string& prompt="[server] ")
 		{
 			Message msg = netToHostMsgIncoming(answer);
 			info(msg.getContent(), "[msg from " + msg.getSrcUserName() + "] ");
+			break;
+		}
+		case FILE_QUEUED:
+		{
+			size_t msg_id;
+			msg_id = netToHostFileQueued(answer);
+			info("file #" + to_string(msg_id).substr(0, HASH_CUT) 
+				+ " queued to be sent!", prompt);
+			messages_ids_mtx.lock();
+			messages_ids.push_back(msg_id);
+			messages_ids_mtx.unlock();
+			break;
+		}
+		case FILE_SENT:
+		{
+			size_t msg_id;
+			msg_id = netToHostFileSent(answer);
+			info("file #" + to_string(msg_id).substr(0, HASH_CUT) 
+				+ " was sent to destination!", prompt);
+			messages_ids_mtx.lock();
+			messages_ids.erase(remove(messages_ids.begin(), messages_ids.end(),
+				msg_id), messages_ids.end());
+			messages_ids_mtx.unlock();
+			break;
+		}
+		case FILE_INCOMING:
+		{
+			Message file = netToHostFileIncoming(answer);
+			string title = file.getTitle();
+			string base = title.substr(title.find_last_of("/\\") + 1);
+			//cout << "title = " << title << endl;
+			//cout << "base = " << base << endl;
+			string path = pwd() + "/" + base;
+			//cout << "path = " << path << endl;
+			info("file '" + base + "'", 
+				"[received from " + file.getSrcUserName() + "] ");
+			ofstream out;
+			//out.open(path, ofstream::binary);
+			out.open(base, ofstream::out | ofstream::binary);
+			if(out.is_open())
+				info("file will be saved to '" + path + "'", 
+					"[received from " + file.getSrcUserName() + "] ");
+			out.write(file.getContent().c_str(), file.getContent().size());
 			break;
 		}
 		case MSG_EXISTS:
@@ -258,6 +311,13 @@ string cmdToNetMsg(const string& cmd, const string& user_name)
 				size_t msg_id = hash<Message>{}(msg);
 				info("message #" + to_string(msg_id).substr(0, HASH_CUT)
 					+ " to be sent!");
+			}
+			if(arg_1 == SEND_FILE_CMD)
+			{
+				arg_3 = join(tokens, " ", 2);
+				str = hostToNetSendFile(user_name, arg_2, arg_3);
+				if(str.empty())
+					info("could not read file '" + arg_3 + "'", "[ERROR]");
 			}
 			break;
 	}

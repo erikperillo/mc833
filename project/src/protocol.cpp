@@ -209,6 +209,26 @@ std::size_t netToHostMsgSent(const std::string msg, int to_cut)
 	return netToHostMsgQueued(msg, to_cut);
 }
 
+std::string hostToNetFileQueued(std::size_t msg_id)
+{
+	return hostToNetMsg(FILE_QUEUED, {std::to_string(msg_id)});
+}
+
+std::size_t netToHostFileQueued(const std::string msg, int to_cut)
+{
+	return netToHostMsgQueued(msg, to_cut);
+}
+
+std::string hostToNetFileSent(std::size_t msg_id)
+{
+	return hostToNetMsg(FILE_SENT, {std::to_string(msg_id)});
+}
+
+std::size_t netToHostFileSent(const std::string msg, int to_cut)
+{
+	return netToHostMsgQueued(msg, to_cut);
+}
+
 std::string hostToNetMsgIncoming(const Message& msg)
 {
 	return hostToNetMsg(MSG_INCOMING, 
@@ -217,13 +237,7 @@ std::string hostToNetMsgIncoming(const Message& msg)
 
 Message netToHostMsgIncoming(const std::string& msg)
 {
-	std::vector<std::string> args;
-
-	args = netToHostMsg(msg);
-	if(args.size() < 3)
-		return Message("", "", "");
-
-	return Message(args[0], args[1], args[2]);
+	return netToHostSendMsg(msg);
 }
 
 std::string hostToNetCreateGroup(const std::string& name)
@@ -268,22 +282,37 @@ std::string fileToStr(const std::string& file_path)
 	return content;
 }
 
-std::string hostToNetSendFile(const std::string& user_name,
-	const std::string& file_path)
+std::string hostToNetSendFile(const std::string& src_user_name, 
+	const std::string& dst_user_name, const std::string& file_path)
 {
 	std::string file_str; 
 	file_str = fileToStr(file_path);
+	if(file_str.empty())
+		return "";
 
-	return hostToNetMsg(SEND_FILE, {user_name, file_str});
+	return hostToNetMsg(SEND_FILE, {src_user_name, dst_user_name,
+		file_str, file_path});
 }
 
-std::pair<std::string, std::string> netToHostSendFile(const std::string& msg)
+Message netToHostSendFile(const std::string& msg)
 {
 	std::vector<std::string> args;
 
 	args = netToHostMsg(msg);
-	if(args.size() < 2)
-		return std::pair<std::string, std::string>("", "");
+	if(args.size() < 4)
+		return Message("", "", "");
 
-	return std::pair<std::string, std::string>(args[0], args[1]);
+	return Message(args[0], args[1], args[2], args[3]);
 }
+
+std::string hostToNetFileIncoming(const Message& msg)
+{
+	return hostToNetMsg(FILE_INCOMING, {msg.getSrcUserName(), 
+		msg.getDstUserName(), msg.getContent(), msg.getTitle()});
+}
+
+Message netToHostFileIncoming(const std::string& msg)
+{
+	return netToHostSendFile(msg);
+}
+

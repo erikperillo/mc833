@@ -10,7 +10,7 @@
 #include <limits>
 
 #define SUCCESS 1
-#define MAX_BUF_LEN 4096
+#define MAX_BUF_LEN 8192
 #define NET_SEP ':'
 
 enum net_err: signed int

@@ -9,8 +9,10 @@ Message::Message(const Message& msg)
 }
 
 Message::Message(const std::string src_user_name, 
-		const std::string dst_user_name, const std::string& content):
-	src_user_name(src_user_name), dst_user_name(dst_user_name), content(content)
+		const std::string dst_user_name, const std::string& content, 
+		const std::string& title):
+	src_user_name(src_user_name), dst_user_name(dst_user_name), 
+	content(content), title(title)
 {;}
 
 std::string Message::getContent() const
@@ -26,4 +28,14 @@ std::string Message::getSrcUserName() const
 std::string Message::getDstUserName() const
 {
 	return this->dst_user_name;
+}
+
+std::string Message::getTitle() const
+{
+	return this->title;
+}
+
+bool Message::hasTitle() const
+{
+	return !this->title.empty();
 }

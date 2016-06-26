@@ -31,6 +31,9 @@ enum messages: char
 	REGISTER,
 	EXIT,
 	SEND_FILE,
+	FILE_INCOMING,
+	FILE_QUEUED,
+	FILE_SENT,
 	MSG_QUEUED,
 	MSG_SENT,
 	MSG_EXISTS,
@@ -91,8 +94,17 @@ std::size_t netToHostMsgQueued(const std::string msg, int to_cut=-1);
 std::string hostToNetMsgSent(std::size_t msg_id);
 std::size_t netToHostMsgSent(const std::string msg, int to_cut=-1);
 
+std::string hostToNetFileQueued(std::size_t msg_id);
+std::size_t netToHostFileQueued(const std::string msg, int to_cut=-1);
+
+std::string hostToNetFileSent(std::size_t msg_id);
+std::size_t netToHostFileSent(const std::string msg, int to_cut=-1);
+
 std::string hostToNetMsgIncoming(const Message& msg);
 Message netToHostMsgIncoming(const std::string& msg);
+
+std::string hostToNetFileIncoming(const Message& msg);
+Message netToHostFileIncoming(const std::string& msg);
 
 std::string hostToNetCreateGroup(const std::string& name);
 std::string netToHostCreateGroup(const std::string& msg);
@@ -102,8 +114,8 @@ std::string hostToNetSendGroup(const std::string& group_name,
 std::pair<std::string, std::string> netToHostSendGroup(const std::string& msg);
 
 std::string fileToStr(const std::string& file_path);
-std::string hostToNetSendFile(const std::string& user_name,
-	const std::string& file_path);
-std::pair<std::string, std::string> netToHostSendFile(const std::string& msg);
+std::string hostToNetSendFile(const std::string& src_user_name,
+	const std::string& dst_user_name, const std::string& file_path);
+Message netToHostSendFile(const std::string& msg);
 
 #endif

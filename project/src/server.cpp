@@ -60,10 +60,14 @@ void messagesLoop()
 			msg = chat.getMessage(id);
 			src = msg.getSrcUserName();
 			dst = msg.getDstUserName();
+			bool is_file = msg.hasTitle();
 			if(online.has(src) && online.has(dst))
 			{
 				sock = chat.getSocketFromUser(dst);	
-				net_msg = hostToNetMsgIncoming(msg);
+				if(is_file)
+					net_msg = hostToNetFileIncoming(msg);
+				else
+					net_msg = hostToNetMsgIncoming(msg);
 				//cout << "sock1 = " << sock << endl;
 				//sending message to destiny user
 				if(send(sock, net_msg) < 0)
@@ -78,12 +82,15 @@ void messagesLoop()
 					chat.delMessage(msg_id);
 					sock = chat.getSocketFromUser(src);	
 					//cout << "sock2 = " << sock << endl;
-					net_msg = hostToNetMsgSent(msg_id);
+					if(is_file)
+						net_msg = hostToNetFileSent(msg_id);
+					else
+						net_msg = hostToNetMsgSent(msg_id);
 					//notificating source user
 					if(send(sock, net_msg) < 0)
 					{
-						cout << "error sending message from " 
-							+ src + " to " + dst << ":" << endl;
+						cout << "error sending " << (is_file?"file":"message")
+							<< " from " << src << " to " << dst << ":" << endl;
 						perror("");
 					}
 				}
@@ -101,7 +108,9 @@ int handle(int socket, const string& str, const User& user)
 	string answer;
 	int ret = 0;
 
+	cout << "header:" << endl;
 	header = netToHostHeader(str);
+	cout << "survived header" << endl;
 
 	switch(header)
 	{
@@ -144,6 +153,44 @@ int handle(int socket, const string& str, const User& user)
 				//cout << msg_id << endl;
 				answer = hostToNetMsgQueued(msg_id);
 			}
+			break;
+		}
+		case SEND_FILE:
+		{
+			cout << "send file" << endl;
+			cout << "net2host" << endl;
+			Message msg = netToHostSendFile(str);		
+			cout << "survived net2host" << endl;
+			/*cout << "src | dst | content: " 
+				<< msg.getSrcUserName() << " | " 
+				<< msg.getDstUserName() << " | "
+				<< msg.getContent() << endl;*/
+			if(msg.getSrcUserName().empty())
+			{
+				answer = hostToNetMsg(INVALID_REQUEST_ERR);	
+				break;
+			}
+
+			bool has_user, add_msg=true;
+
+			chat_mtx.lock();
+			has_user = chat.hasUser(msg.getDstUserName());
+			if(has_user)
+				add_msg = chat.addMessage(msg);
+			chat_mtx.unlock();
+
+			if(!has_user)
+				answer = hostToNetMsg(NO_MSG_DST_ERR);
+			else if(!add_msg)
+				answer = hostToNetMsg(MSG_EXISTS);
+			else
+			{
+				size_t msg_id;
+				msg_id = hash<Message>{}(msg);
+				//cout << msg_id << endl;
+				answer = hostToNetFileQueued(msg_id);
+			}
+			cout << "survived send file" << endl;
 			break;
 		}
 		case CREATE_GROUP:
@@ -334,17 +381,19 @@ void userInteraction(int id, int sock)
 		while(true)
 		{
 			//receiving message from client
+			cout << "recv..." << endl;
 			msg = receiver.recv();
 			if(msg.getErrCode() < 0)
 				error("recv");	
 			if(msg.getErrCode() == 0)
 				break;
+			cout << "survived recv..." << endl;
 
 			//displaying message
 			src = msg.getSrcAddr();
-			cout << "[" << id << "]"
-				<< "[" << src.getIp() << ":" << src.getPort() << "]"
-				<< " " << msg.getContent() << endl;
+			//cout << "[" << id << "]"
+			//	<< "[" << src.getIp() << ":" << src.getPort() << "]"
+			//	<< " " << msg.getContent() << endl;
 
 			//handling request
 			if(handle(sock, msg.getContent(), user) < 0)

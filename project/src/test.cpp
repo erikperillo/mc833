@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <thread>
 #include <mutex>
 #include <string>
@@ -406,8 +407,12 @@ void protocolTest()
 		<< msg2.getSrcUserName() << "/" << msg2.getDstUserName() << "/" 
 		<< msg2.getContent() << endl;
 
-	str = fileToStr("el");
+	str = fileToStr("/home/erik/media/images/random/garis.png");
 	cout << "str = " << str << endl;
+	cout << str.size() << endl;
+
+	ofstream out("hue.png", ofstream::binary);
+	out.write(str.c_str(), str.size());	
 }
 
 void hashTest()
@@ -415,10 +420,12 @@ void hashTest()
 	Message msg1("Paulo", "Henrique", "ey b0ss can i hab da pusy");
 	Message msg2("erik", "ana paula", "huehuebrbr");
 	Message msg3("erik", "ana paula", "uehuebrbr");
+	Message msg4("erik", "ana paula", "uehuebrbr", "title");
 	
 	cout << "hash(msg1) = " << std::hash<Message>{}(msg1) << endl;
 	cout << "hash(msg2) = " << std::hash<Message>{}(msg2) << endl;
 	cout << "hash(msg3) = " << std::hash<Message>{}(msg3) << endl;
+	cout << "hash(msg4) = " << std::hash<Message>{}(msg4) << endl;
 }
 
 int main()
