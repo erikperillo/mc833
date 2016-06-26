@@ -258,3 +258,32 @@ std::pair<std::string, std::string> netToHostSendGroup(const std::string& msg)
 
 	return std::pair<std::string, std::string>(args[0], args[1]);
 }
+
+std::string fileToStr(const std::string& file_path)
+{
+	std::ifstream file(file_path);
+	std::string content((std::istreambuf_iterator<char>(file)), 
+		std::istreambuf_iterator<char>());
+
+	return content;
+}
+
+std::string hostToNetSendFile(const std::string& user_name,
+	const std::string& file_path)
+{
+	std::string file_str; 
+	file_str = fileToStr(file_path);
+
+	return hostToNetMsg(SEND_FILE, {user_name, file_str});
+}
+
+std::pair<std::string, std::string> netToHostSendFile(const std::string& msg)
+{
+	std::vector<std::string> args;
+
+	args = netToHostMsg(msg);
+	if(args.size() < 2)
+		return std::pair<std::string, std::string>("", "");
+
+	return std::pair<std::string, std::string>(args[0], args[1]);
+}

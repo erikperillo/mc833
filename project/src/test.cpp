@@ -405,6 +405,9 @@ void protocolTest()
 	cout << "output (src/dst/content): "
 		<< msg2.getSrcUserName() << "/" << msg2.getDstUserName() << "/" 
 		<< msg2.getContent() << endl;
+
+	str = fileToStr("el");
+	cout << "str = " << str << endl;
 }
 
 void hashTest()

@@ -4,6 +4,7 @@
 #include <string>
 #include <regex>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <sstream>
 #include <algorithm>
@@ -29,6 +30,7 @@ enum messages: char
 	HELP,
 	REGISTER,
 	EXIT,
+	SEND_FILE,
 	MSG_QUEUED,
 	MSG_SENT,
 	MSG_EXISTS,
@@ -98,5 +100,10 @@ std::string netToHostCreateGroup(const std::string& msg);
 std::string hostToNetSendGroup(const std::string& group_name, 
 	const std::string& msg);
 std::pair<std::string, std::string> netToHostSendGroup(const std::string& msg);
+
+std::string fileToStr(const std::string& file_path);
+std::string hostToNetSendFile(const std::string& user_name,
+	const std::string& file_path);
+std::pair<std::string, std::string> netToHostSendFile(const std::string& msg);
 
 #endif
