@@ -11,7 +11,7 @@
 
 using namespace std;
 
-#define ONLINE_GROUP "online"
+#define ONLINE_GROUP " online"
 #define OFFLINE_GROUP "offline"
 #define SERVER_NAME "127.0.0.1"
 #define SERVER_PORT 13254
@@ -25,8 +25,6 @@ std::mutex chat_mtx;
 bool free_thread[MAX_NUM_THREADS];
 //chat
 Chat chat;
-stringstream ss;
-ChatView chat_view(chat, ss);
 
 void error(const std::string& msg, int ret=1)
 {
@@ -116,6 +114,20 @@ int handle(int socket, const string& str, const User& user)
 		{
 			answer = hostToNetMsg(OK);
 			ret = -1;
+			break;
+		}
+		case WHO:
+		{
+			stringstream ss;
+			vector<string> header = {"user", "status"};
+
+			chat_mtx.lock();
+			ChatView view(chat, ss);
+			view.printUsersFromGroup(ONLINE_GROUP, header);	
+			view.printUsersFromGroup(OFFLINE_GROUP, false);	
+			chat_mtx.unlock();
+			
+			answer = hostToNetUsersList(ss.str());
 			break;
 		}
 		case SEND_MSG:
@@ -466,9 +478,7 @@ void serverLoop()
 		}
 	}
 
-	//waiting for threads to finish
-	//for(i=0; i<MAX_NUM_THREADS; i++)
-	//	threads[i].join();	
+	close(sock);
 }
 
 int main()
@@ -479,8 +489,10 @@ int main()
 	chat.addGroup(ONLINE_GROUP);
 	chat.addGroup(OFFLINE_GROUP);
 
+	//creating thread to handle messages
 	msg_thread = thread(messagesLoop);	
 
+	//main server loop
 	serverLoop();
 
 	msg_thread.join();

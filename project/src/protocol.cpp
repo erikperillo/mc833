@@ -330,3 +330,18 @@ Message netToHostFileIncoming(const std::string& msg)
 	return netToHostSendFile(msg);
 }
 
+std::string hostToNetUsersList(const std::string& msg)
+{
+	return hostToNetMsg(USERS_LIST, {msg});
+}
+
+std::string netToHostUsersList(const std::string& msg)
+{
+	std::vector<std::string> args;
+
+	args = netToHostMsg(msg);
+	if(args.size() < 1)
+		return "";
+
+	return args[0];
+}

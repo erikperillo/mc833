@@ -22,10 +22,8 @@ using namespace std;
 #define SEND_GROUP_CMD "sendg"
 #define SEND_MSG_CMD "sendmsg"
 #define SEND_FILE_CMD "sendf"
+#define WHO_CMD "who"
 #define HELP_CMD "help"
-
-vector<size_t> messages_ids;
-std::mutex messages_ids_mtx;
 
 void error(const string& msg, int ret=1)
 {
@@ -44,19 +42,6 @@ string pwd()
   ssize_t size = readlink("/proc/self/exe", path, MAX_BUF);
 
   return string(path, (size>0)?size:0);
-}
-
-string filterZeros(const string& str)
-{
-	string ret;
-
-	if(str.empty())
-		return ret;
-	for(unsigned i=0; i<str.size()-1; i++)
-		if(str[i] != '\0')
-			ret.push_back(str[i]);
-
-	return ret;
 }
 
 void displayHelpMessage(const string& prompt="\t")
@@ -111,9 +96,6 @@ int handle(const string& answer, const string& prompt="[server] ")
 			msg_id = netToHostMsgQueued(answer);
 			info("message #" + to_string(msg_id).substr(0, HASH_CUT) 
 				+ " queued to be sent!", prompt);
-			messages_ids_mtx.lock();
-			messages_ids.push_back(msg_id);
-			messages_ids_mtx.unlock();
 			break;
 		}
 		case MSG_SENT:
@@ -122,10 +104,6 @@ int handle(const string& answer, const string& prompt="[server] ")
 			msg_id = netToHostMsgSent(answer);
 			info("message #" + to_string(msg_id).substr(0, HASH_CUT) 
 				+ " was sent to destination!", prompt);
-			messages_ids_mtx.lock();
-			messages_ids.erase(remove(messages_ids.begin(), messages_ids.end(),
-				msg_id), messages_ids.end());
-			messages_ids_mtx.unlock();
 			break;
 		}
 		case MSG_INCOMING:
@@ -140,9 +118,6 @@ int handle(const string& answer, const string& prompt="[server] ")
 			msg_id = netToHostFileQueued(answer);
 			info("file #" + to_string(msg_id).substr(0, HASH_CUT) 
 				+ " queued to be sent!", prompt);
-			messages_ids_mtx.lock();
-			messages_ids.push_back(msg_id);
-			messages_ids_mtx.unlock();
 			break;
 		}
 		case FILE_SENT:
@@ -151,10 +126,6 @@ int handle(const string& answer, const string& prompt="[server] ")
 			msg_id = netToHostFileSent(answer);
 			info("file #" + to_string(msg_id).substr(0, HASH_CUT) 
 				+ " was sent to destination!", prompt);
-			messages_ids_mtx.lock();
-			messages_ids.erase(remove(messages_ids.begin(), messages_ids.end(),
-				msg_id), messages_ids.end());
-			messages_ids_mtx.unlock();
 			break;
 		}
 		case FILE_INCOMING:
@@ -175,6 +146,13 @@ int handle(const string& answer, const string& prompt="[server] ")
 				info("file will be saved to '" + path + "'", 
 					"[received from " + file.getSrcUserName() + "] ");
 			out.write(file.getContent().c_str(), file.getContent().size());
+			break;
+		}
+		case USERS_LIST:
+		{
+			string users_list = netToHostUsersList(answer);
+			info("users list:", prompt);	
+			cout << users_list;
 			break;
 		}
 		case MSG_EXISTS:
@@ -292,6 +270,8 @@ string cmdToNetMsg(const string& cmd, const string& user_name)
 			arg_1 = lower(tokens[0]);
 			if(arg_1 == EXIT_CMD)
 				str = hostToNetMsg(EXIT);
+			if(arg_1 == WHO_CMD)
+				str = hostToNetMsg(WHO);
 			break;
 
 		case 2:		
@@ -404,6 +384,8 @@ void client(string& ip, unsigned short port, string& name)
 
 	if(thr.joinable())
 		thr.join();
+
+	close(sock);
 
 	cout << "connection ended." << endl;
 }

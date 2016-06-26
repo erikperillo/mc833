@@ -12,8 +12,10 @@ class ChatView
 	Chat& model;
 	std::ostream& out;
 	//methods
+	void setColWidth();
 	void setColWidth(unsigned width);
 	void setColWidth(const std::vector<std::string>& words);
+	void resetColWidth();
 	std::string center(const std::string& word);
 	std::string col(const std::string& word);
 	std::string sep(unsigned cols=1);
@@ -27,6 +29,8 @@ class ChatView
 	void printUsers(const std::string& title="users");
 	void printGroups(const std::string& title="groups");
 	bool printUsersFromGroup(const std::string& group_name, bool header=true);
+	bool printUsersFromGroup(const std::string& group_name, 
+		std::vector<std::string> header);
 };
 
 #endif

@@ -28,6 +28,8 @@ enum messages: char
 	UNDEFINED,
 	OK,
 	HELP,
+	WHO,
+	USERS_LIST,
 	REGISTER,
 	EXIT,
 	SEND_FILE,
@@ -103,9 +105,6 @@ std::size_t netToHostFileSent(const std::string msg, int to_cut=-1);
 std::string hostToNetMsgIncoming(const Message& msg);
 Message netToHostMsgIncoming(const std::string& msg);
 
-std::string hostToNetFileIncoming(const Message& msg);
-Message netToHostFileIncoming(const std::string& msg);
-
 std::string hostToNetCreateGroup(const std::string& name);
 std::string netToHostCreateGroup(const std::string& msg);
 
@@ -117,5 +116,11 @@ std::string fileToStr(const std::string& file_path);
 std::string hostToNetSendFile(const std::string& src_user_name,
 	const std::string& dst_user_name, const std::string& file_path);
 Message netToHostSendFile(const std::string& msg);
+
+std::string hostToNetFileIncoming(const Message& msg);
+Message netToHostFileIncoming(const std::string& msg);
+
+std::string hostToNetUsersList(const std::string& msg);
+std::string netToHostUsersList(const std::string& msg);
 
 #endif

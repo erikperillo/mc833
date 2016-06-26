@@ -19,6 +19,13 @@ void ChatView::setColWidth(const std::vector<std::string>& words)
 			this->col_w = w.size()+2;
 }
 
+void ChatView::setColWidth()
+{
+	this->col_w = 0;
+	this->setColWidth(this->model.getUsersNames());
+	this->setColWidth(this->model.getGroupsNames());
+}
+
 std::string ChatView::center(const std::string& word)
 {
 	unsigned num_spaces;
@@ -50,9 +57,10 @@ void ChatView::printTable(const std::vector<std::vector<std::string>>& cols,
 			return;
 
 	//getting collumn width
-	this->setColWidth(0);
-	for(auto c: cols)
-		this->setColWidth(c);
+	this->resetColWidth();
+	//for(auto c: cols)
+	//	this->setColWidth(c);
+	this->setColWidth();
 	this->setColWidth(header);
 
 	//header
@@ -92,12 +100,11 @@ void ChatView::printGroups(const std::string& title)
 	this->printTable(this->model.getGroupsNames(), title);
 }
 
-bool ChatView::printUsersFromGroup(const std::string& group_name, bool header)
+bool ChatView::printUsersFromGroup(const std::string& group_name, 
+	std::vector<std::string> header)
 {
 	if(!this->model.hasGroup(group_name))
 		return false;
-
-	std::vector<std::string> hdr;
 
 	//formatting
 	Group group = this->model.getGroup(group_name);
@@ -109,14 +116,32 @@ bool ChatView::printUsersFromGroup(const std::string& group_name, bool header)
 	std::vector<std::vector<std::string>> table;
 	table.push_back(users_names);
 	table.push_back(groups_names);
-	//creating header
-	if(header)
-	{
-		hdr.push_back("user");
-		hdr.push_back("group");
-	}
 	//printing table
-	this->printTable(table, hdr);
+	if(users_names.size() > 0)
+	{
+		if(header.size() == 2)
+			this->printTable(table, header);
+		else
+			this->printTable(table, std::vector<std::string>());
+	}
 
 	return true;
+}
+
+bool ChatView::printUsersFromGroup(const std::string& group_name, bool header)
+{
+	std::vector<std::string> hdr;
+
+	if(header)
+	{
+		hdr.push_back("users");
+		hdr.push_back("groups");
+	}
+
+	return this->printUsersFromGroup(group_name, hdr);
+}
+
+void ChatView::resetColWidth()
+{
+	this->setColWidth(0);
 }
